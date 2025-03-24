@@ -2,12 +2,13 @@
     <v-app>
         <v-container>
             <!-- 种类选择（Category）筛选 -->
-            <v-chip-group dense v-model="selectedCategory" active-class="indigo--text text--accent-4 font-weight-black"
-                mandatory center-active show-arrows>
-                <v-chip v-for="category in categories" :key="category" :value="category">
+            <v-tabs v-model="selectedCategory" background-color="transparent" color="indigo"
+                slider-color="indigo accent-4" centered show-arrows>
+                <v-tab v-for="category in categories" :key="category" :value="category"
+                    class="font-weight-bold text-body-1">
                     {{ category }}
-                </v-chip>
-            </v-chip-group>
+                </v-tab>
+            </v-tabs>
 
             <!-- 搜索部分 -->
             <v-container d-flex class="pb-0">
@@ -53,12 +54,14 @@
 
             <!-- 标签筛选 -->
             <v-container class="pt-0 pb-2">
-                <v-chip-group active-class="primary--text" column>
-                    <v-chip v-for="tag in popularTags" :key="tag" :input-value="selectedTags.includes(tag)"
-                        @click="toggleTag(tag)" filter outlined>
-                        #{{ tag }}
-                    </v-chip>
-                </v-chip-group>
+                <div class="d-flex justify-center">
+                    <v-chip-group active-class="primary--text" column>
+                        <v-chip v-for="tag in popularTags" :key="tag" :input-value="selectedTags.includes(tag)"
+                            @click="toggleTag(tag)" filter outlined>
+                            #{{ tag }}
+                        </v-chip>
+                    </v-chip-group>
+                </div>
             </v-container>
 
             <!-- 排序选项 -->
@@ -100,18 +103,24 @@
                                         <v-spacer></v-spacer>
                                         <div class="d-flex align-center">
                                             <!-- 点赞按钮 -->
-                                            <v-btn icon x-small color="blue" class="mr-1" @click="toggleLike(post)">
+                                            <v-btn icon x-small color="blue" class="mr-1 like-btn"
+                                                @click.stop="toggleLike(post, $event)"
+                                                :class="{'pulse-animation': post.isLiked}">
                                                 <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' : 'mdi-thumb-up-outline'
                                                     }}</v-icon>
                                             </v-btn>
-                                            <span class="mr-2 caption">{{ post.likeCount || 0 }}</span>
+                                            <span class="mr-2 caption like-count-text"
+                                                :class="{'primary--text': post.isLiked}">{{ post.likes }}</span>
 
                                             <!-- 收藏按钮 -->
-                                            <v-btn icon x-small color="red" class="mr-1" @click="toggleFavorite(post)">
+                                            <v-btn icon x-small color="red" class="mr-1 favorite-btn"
+                                                @click.stop="toggleFavorite(post, $event)"
+                                                :class="{'pulse-animation': post.isFavorite}">
                                                 <v-icon small>{{ post.isFavorite ? 'mdi-heart' : 'mdi-heart-outline'
                                                     }}</v-icon>
                                             </v-btn>
-                                            <span class="mr-2 caption">{{ post.likes }}</span>
+                                            <span class="mr-2 caption favorite-count-text"
+                                                :class="{'red--text': post.isFavorite}">{{ post.favorites || 0 }}</span>
 
                                             <!-- 评论按钮 -->
                                             <v-btn icon x-small class="mr-1" @click="openComments(post)">
@@ -127,6 +136,13 @@
                 </v-container>
             </v-container>
 
+            <!-- 添加帖子按钮 -->
+            <router-link to="/CreatePost">
+                <v-btn class="fixed-button" large color="indigo" dark fab>
+                    <v-icon>mdi-pencil</v-icon>
+                </v-btn>
+            </router-link>
+
             <!-- 评论对话框 -->
             <v-dialog v-model="commentDialog" max-width="600px">
                 <v-card v-if="selectedPost">
@@ -138,18 +154,47 @@
                         </v-btn>
                     </v-card-title>
                     <v-divider></v-divider>
-                    <v-card-text>
+                    <v-card-text class="comments-container">
                         <v-list two-line>
-                            <v-list-item v-for="(comment, index) in comments" :key="index">
-                                <v-list-item-avatar>
-                                    <v-img :src="comment.authorAvatar"></v-img>
-                                </v-list-item-avatar>
-                                <v-list-item-content>
-                                    <v-list-item-title>{{ comment.authorName }}</v-list-item-title>
-                                    <v-list-item-subtitle>{{ comment.content }}</v-list-item-subtitle>
-                                    <div class="caption grey--text text--darken-1 mt-1">{{ comment.createTime }}</div>
-                                </v-list-item-content>
-                            </v-list-item>
+                            <template v-for="(comment, index) in comments">
+                                <v-list-item :key="comment.id || 'comment-' + index">
+                                    <v-list-item-avatar>
+                                        <v-img :src="comment.authorAvatar"></v-img>
+                                    </v-list-item-avatar>
+                                    <v-list-item-content>
+                                        <v-list-item-title>{{ comment.authorName }}</v-list-item-title>
+                                        <v-list-item-subtitle>{{ comment.content }}</v-list-item-subtitle>
+                                        <v-btn x-small text color="primary" class="mt-1"
+                                            @click="prepareReply(comment)">回复</v-btn>
+                                    </v-list-item-content>
+                                </v-list-item>
+
+                                <!-- 嵌套回复 -->
+                                <div v-if="comment.replies && comment.replies.length" :key="`replies-${comment.id}`"
+                                    class="ml-12">
+                                    <v-list-item v-for="reply in comment.replies" :key="reply.id" dense>
+                                        <v-list-item-avatar size="24">
+                                            <v-img :src="reply.authorAvatar"></v-img>
+                                        </v-list-item-avatar>
+                                        <v-list-item-content>
+                                            <v-list-item-title class="subtitle-2">
+                                                {{ reply.authorName }}
+                                                <span class="caption grey--text">回复</span>
+                                                <span class="caption primary--text">{{ reply.replyTo }}</span>
+                                            </v-list-item-title>
+                                            <v-list-item-subtitle>{{ reply.content }}</v-list-item-subtitle>
+                                            <div class="caption grey--text text--darken-1 mt-1">
+                                                {{ reply.createTime }}
+                                                <v-btn x-small text color="primary" class="ml-2"
+                                                    @click="prepareReply(reply, comment.id)">
+                                                    回复
+                                                </v-btn>
+                                            </div>
+                                        </v-list-item-content>
+                                    </v-list-item>
+                                </div>
+                            </template>
+
                             <v-list-item v-if="comments.length === 0">
                                 <v-list-item-content class="text-center">
                                     <v-list-item-title>暂无评论</v-list-item-title>
@@ -159,8 +204,19 @@
                     </v-card-text>
                     <v-divider></v-divider>
                     <v-card-actions>
-                        <v-text-field v-model="newComment" label="添加评论" outlined dense append-icon="mdi-send"
-                            hide-details @click:append="addComment" @keyup.enter="addComment"></v-text-field>
+                        <v-text-field v-model="newComment" :label="replyingTo ? `回复 ${replyingTo.authorName}` : '添加评论'"
+                            outlined dense :append-icon="replyingTo ? 'mdi-close' : 'mdi-send'"
+                            :append-icon-cb="replyingTo ? cancelReply : null"
+                            @click:append="replyingTo ? cancelReply() : addComment()" @keyup.enter="addComment">
+                            <template v-slot:append>
+                                <v-icon v-if="replyingTo" color="grey" class="mr-2" @click="cancelReply">
+                                    mdi-close
+                                </v-icon>
+                                <v-icon color="primary" @click="addComment">
+                                    mdi-send
+                                </v-icon>
+                            </template>
+                        </v-text-field>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -196,6 +252,8 @@
             selectedPost: null,
             comments: [],
             newComment: '',
+            replyingTo: null,  // 当前回复的评论对象
+            replyParentId: null, // 如果是回复嵌套评论，记录父评论ID
 
             // 用户信息
             currentUser: {
@@ -324,7 +382,14 @@
                 })
                     .then(response => {
                         if (response.data.code === 200) {
-                            this.posts = response.data.data;
+                            // 确保 isFavorite 和 isLiked 属性被初始化
+                            this.posts = response.data.data.map(post => {
+                                return {
+                                    ...post,
+                                    isFavorite: post.isFavorite || false,
+                                    isLiked: post.isLiked || false
+                                };
+                            });
                         }
                     })
                     .catch(error => {
@@ -431,102 +496,255 @@
                     });
             },
 
-            toggleLike(post) {
-                // 切换点赞状态
-                post.isLiked = !post.isLiked;
-                post.likeCount = post.isLiked ? (post.likeCount || 0) + 1 : (post.likeCount || 1) - 1;
+            toggleLike(post, event) {
+                // 创建按钮动画效果
+                const btn = event.currentTarget;
+                btn.classList.add('clicked');
 
-                // 向后端发送更新请求
+                // 切换状态
+                post.isLiked = !post.isLiked;
+                console.log("post.isLiked", post.isLiked);
+                post.likeCount = post.isLiked ? (post.likeCount || 0) + 1 : (post.likeCount || 1) - 1;
+                post.likes = post.isLiked ? (post.likes || 0) + 1 : (post.likes || 1) - 1;
+
+                // 恢复按钮状态
+                setTimeout(() => {
+                    btn.classList.remove('clicked');
+                }, 300);
+
+                // 显示简单的提示消息
+                this.$nextTick(() => {
+                    if (post.isLiked) {
+                        this.$toast ? this.$toast.success('点赞成功') : console.log('点赞成功');
+                    }
+                });
+
+                // 向后端发送点赞请求
                 this.$axios.post(`/api/posts/${post.id}/like`, {
                     like: post.isLiked
-                }).catch(error => {
-                    console.error('更新点赞状态失败:', error);
-                    // 失败时恢复状态
-                    post.isLiked = !post.isLiked;
-                    post.likeCount = post.isLiked ? post.likeCount + 1 : post.likeCount - 1;
-                });
-            },
-
-            toggleFavorite(post) {
-                // 切换收藏状态
-                post.isFavorite = !post.isFavorite;
-
-                // 向后端发送更新请求
-                this.$axios.post(`/api/posts/${post.id}/favorite`, {
-                    favorite: post.isFavorite
-                }).catch(error => {
-                    console.error('更新收藏状态失败:', error);
-                    // 失败时恢复状态
-                    post.isFavorite = !post.isFavorite;
-                });
-            },
-
-            openComments(post) {
-                // 打开评论对话框
-                this.selectedPost = post;
-                this.commentDialog = true;
-                this.fetchComments(post.id);
-            },
-
-            fetchComments(postId) {
-                // 获取评论列表
-                this.$axios.get(`/api/posts/${postId}/comments`)
+                })
                     .then(response => {
-                        if (response.data.code === 200) {
-                            this.comments = response.data.data;
+                        if (response.data.code !== 200) {
+                            // 如果请求失败，恢复状态
+                            post.isLiked = !post.isLiked;
+                            post.likeCount = post.isLiked ? post.likeCount + 1 : post.likeCount - 1;
+                            post.likes = post.isLiked ? post.likes + 1 : post.likes - 1;
                         }
                     })
                     .catch(error => {
-                        console.error('获取评论列表失败:', error);
-                        // 模拟数据
+                        console.error('点赞操作失败:', error);
+                        // 如果请求失败，恢复状态
+                        post.isLiked = !post.isLiked;
+                        post.likeCount = post.isLiked ? post.likeCount + 1 : post.likeCount - 1;
+                        post.likes = post.isLiked ? post.likes + 1 : post.likes - 1;
+                    });
+            },
+
+            toggleFavorite(post, event) {
+                // 创建按钮动画效果
+                const btn = event.currentTarget;
+                btn.classList.add('clicked');
+
+                // 切换状态
+                post.isFavorite = !post.isFavorite;
+                post.favorites = post.isFavorite ? (post.favorites || 0) + 1 : (post.favorites || 1) - 1;
+
+                // 恢复按钮状态
+                setTimeout(() => {
+                    btn.classList.remove('clicked');
+                }, 300);
+
+                // 显示简单的提示消息
+                this.$nextTick(() => {
+                    if (post.isFavorite) {
+                        this.$toast ? this.$toast.success('收藏成功') : console.log('收藏成功');
+                    } else {
+                        this.$toast ? this.$toast.info('已取消收藏') : console.log('已取消收藏');
+                    }
+                });
+
+                // 向后端发送收藏请求
+                this.$axios.post(`/api/posts/${post.id}/favorite`, {
+                    favorite: post.isFavorite
+                })
+                    .then(response => {
+                        if (response.data.code !== 200) {
+                            // 如果请求失败，恢复状态
+                            post.isFavorite = !post.isFavorite;
+                            post.favorites = post.isFavorite ? post.favorites + 1 : post.favorites - 1;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('收藏操作失败:', error);
+                        // 如果请求失败，恢复状态
+                        post.isFavorite = !post.isFavorite;
+                        post.favorites = post.isFavorite ? post.favorites + 1 : post.favorites - 1;
+                    });
+            },
+
+            openComments(post) {
+                this.selectedPost = post;
+                this.commentDialog = true;
+                this.newComment = '';
+                this.replyingTo = null;
+                this.replyParentId = null;
+
+                // 从后端获取评论列表
+                this.$axios.get(`/api/posts/${post.id}/comments`)
+                    .then(response => {
+                        if (response.data.code === 200) {
+                            this.comments = response.data.data.map(comment => {
+                                return {
+                                    ...comment,
+                                    replies: comment.replies || []
+                                };
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取评论失败:', error);
+                        // 模拟评论数据
                         this.comments = [
                             {
                                 id: 1,
-                                content: '非常棒的分享！',
-                                authorName: '用户A',
+                                content: '这篇帖子很不错，我很喜欢！',
+                                authorName: '评论用户1',
                                 authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/1.jpg',
-                                createTime: '2023-06-15 14:30'
+                                createTime: '2023-11-20 15:30',
+                                replies: [
+                                    {
+                                        id: 3,
+                                        content: '谢谢你的评论！',
+                                        authorName: '楼主',
+                                        authorAvatar: post.authorAvatar,
+                                        createTime: '2023-11-20 16:10',
+                                        replyTo: '评论用户1'
+                                    }
+                                ]
                             },
                             {
                                 id: 2,
-                                content: '谢谢分享！',
-                                authorName: '用户B',
+                                content: '内容很有深度，值得推荐！',
+                                authorName: '评论用户2',
                                 authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
-                                createTime: '2023-06-15 15:45'
+                                createTime: '2023-11-20 14:45',
+                                replies: []
                             }
                         ];
                     });
             },
 
+            prepareReply(comment, parentId = null) {
+                this.replyingTo = comment;
+                this.replyParentId = parentId;
+                this.newComment = '';  // 清空输入框
+                // 自动聚焦输入框（添加安全检查）
+                setTimeout(() => {
+                    const inputElement = document.querySelector('.v-card-actions .v-text-field input');
+                    if (inputElement) {
+                        inputElement.focus();
+                    }
+                }, 100);
+            },
+
+            cancelReply() {
+                this.replyingTo = null;
+                this.replyParentId = null;
+                this.newComment = '';
+            },
+
             addComment() {
                 if (!this.newComment.trim()) return;
 
-                // 向后端发送添加评论请求
-                this.$axios.post(`/api/posts/${this.selectedPost.id}/comments`, {
-                    content: this.newComment
-                })
-                    .then(res => {
-                        if (res.data.code === 200) {
-                            // 添加到评论列表
-                            this.comments.unshift(res.data.data);
+                if (this.replyingTo) {
+                    // 处理回复逻辑
+                    const replyData = {
+                        content: this.newComment,
+                        parentId: this.replyParentId || this.replyingTo.id
+                    };
+
+                    this.$axios.post(`/api/posts/${this.selectedPost.id}/comments/reply`, replyData)
+                        .then(res => {
+                            if (res.data.code === 200) {
+                                this.handleReplySuccess(res.data.data);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('添加回复失败:', error);
+                            // 模拟成功
+                            const newReply = {
+                                id: Date.now(),
+                                content: this.newComment,
+                                authorName: '我',
+                                authorAvatar: this.currentUser.avatar,
+                                createTime: new Date().toLocaleString(),
+                                replyTo: this.replyingTo.authorName
+                            };
+                            this.handleReplySuccess(newReply);
+                        });
+                } else {
+                    // 原来的评论逻辑
+                    this.$axios.post(`/api/posts/${this.selectedPost.id}/comments`, {
+                        content: this.newComment
+                    })
+                        .then(res => {
+                            if (res.data.code === 200) {
+                                // 添加到评论列表
+                                this.comments.unshift({
+                                    ...res.data.data,
+                                    replies: []
+                                });
+                                this.selectedPost.comments = (this.selectedPost.comments || 0) + 1;
+                                this.newComment = ''; // 清空输入框
+                            }
+                        })
+                        .catch(error => {
+                            console.error('添加评论失败:', error);
+                            // 模拟成功
+                            const newComment = {
+                                id: Date.now(),
+                                content: this.newComment,
+                                authorName: '我',
+                                authorAvatar: this.currentUser.avatar,
+                                createTime: new Date().toLocaleString(),
+                                replies: []
+                            };
+                            this.comments.unshift(newComment);
                             this.selectedPost.comments = (this.selectedPost.comments || 0) + 1;
                             this.newComment = ''; // 清空输入框
+                        });
+                }
+            },
+
+            handleReplySuccess(newReply) {
+                // 如果是回复嵌套评论
+                if (this.replyParentId) {
+                    // 找到父评论
+                    const parentComment = this.comments.find(c => c.id === this.replyParentId);
+                    if (parentComment) {
+                        // 添加回复到嵌套数组
+                        if (!parentComment.replies) {
+                            parentComment.replies = [];
                         }
-                    })
-                    .catch(error => {
-                        console.error('添加评论失败:', error);
-                        // 模拟成功
-                        const newComment = {
-                            id: Date.now(),
-                            content: this.newComment,
-                            authorName: '我',
-                            authorAvatar: this.currentUser.avatar,
-                            createTime: new Date().toLocaleString()
-                        };
-                        this.comments.unshift(newComment);
-                        this.selectedPost.comments = (this.selectedPost.comments || 0) + 1;
-                        this.newComment = ''; // 清空输入框
-                    });
+                        parentComment.replies.push(newReply);
+                    }
+                } else {
+                    // 找到被回复的评论
+                    const parentComment = this.comments.find(c => c.id === this.replyingTo.id);
+                    if (parentComment) {
+                        // 添加回复到嵌套数组
+                        if (!parentComment.replies) {
+                            parentComment.replies = [];
+                        }
+                        parentComment.replies.push(newReply);
+                    }
+                }
+
+                // 更新评论计数并重置状态
+                this.selectedPost.comments = (this.selectedPost.comments || 0) + 1;
+                this.newComment = ''; // 清空输入框
+                this.replyingTo = null;
+                this.replyParentId = null;
             }
         },
 
@@ -569,5 +787,81 @@
     .v-card__title {
         word-break: normal;
         white-space: normal;
+    }
+
+    .fixed-button {
+        position: fixed;
+        right: 150px;
+        bottom: 150px;
+    }
+
+    /* 修改评论容器滚动样式 */
+    .comments-container {
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 16px;
+        /* 增加右侧内边距，为滚动条留出更多空间 */
+        margin-right: 8px;
+        /* 添加右侧外边距 */
+    }
+
+    /* 美化滚动条样式 (仅适用于WebKit浏览器，如Chrome和Safari) */
+    .comments-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .comments-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .comments-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+
+    .comments-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* 添加点赞和收藏按钮动画效果 */
+    .like-btn,
+    .favorite-btn {
+        transition: transform 0.3s ease;
+    }
+
+    .like-btn.clicked,
+    .favorite-btn.clicked {
+        transform: scale(1.5);
+    }
+
+    .pulse-animation {
+        animation: pulse 0.5s;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.3);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .like-count-text,
+    .favorite-count-text {
+        transition: color 0.3s ease;
+    }
+
+    /* 防止事件冒泡导致卡片点击 */
+    .like-btn,
+    .favorite-btn {
+        position: relative;
+        z-index: 2;
     }
 </style>
