@@ -7,6 +7,9 @@ import DiaryManage from '../views/DiaryManage.vue'
 import DiaryEdit from '../views/DiaryEdit.vue'
 import PlaceSearch from '../views/PlaceSearch.vue'
 import FoodRecommend from '../views/FoodRecommend.vue'
+import UserProfile from '../views/UserProfile.vue'
+import CreatePost from '../views/CreatePost.vue'
+import FrontPage from '../views/FrontPage.vue'
 Vue.use(VueRouter)
 
 const routes = [
@@ -48,6 +51,21 @@ const routes = [
     name: 'FoodRecommend',
     component: FoodRecommend
   },
+  {
+  path: '/UserProfile',
+  name: 'UserProfile',
+  component: UserProfile
+  },
+  {
+    path: '/CreatePost',
+    name: 'CreatePost',
+    component: CreatePost
+  },
+  {
+    path: '/FrontPage',
+    name: 'FrontPage',
+    component: FrontPage
+  }
    ]
 
 const router = new VueRouter({

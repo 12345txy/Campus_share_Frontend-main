@@ -9,10 +9,11 @@
                     <span class="text-h5 black--text font-weight-black" style="position:absolute;top:30px;left:30px;">
                         <v-icon medium color="black" class="mr-2 mb-1" large>mdi-school
                         </v-icon>
-                        BuptTravel
+                        School Days
                     </span>
                     <v-btn rounded style="position:absolute;top:36px;right:15px;" class="px-0" text x-small depressed
-                        onclick="window.open('https://github.com/112292454/DSlab.git')"> <v-icon medium color="black">
+                        onclick="window.open('https://github.com/12345txy/Campus_share_Frontend.git')"> <v-icon medium
+                            color="black">
                             mdi-github
                         </v-icon>
                     </v-btn>
@@ -33,19 +34,15 @@
                         <v-tab :key="1">Sign up</v-tab>
                         <v-tab-item :key="0">
                             <v-container class="px-12 pt-6">
-                                <v-text-field label="Username" v-model="username1" append-icon="mdi-account-box-edit-outline" clearable>
-                                </v-text-field >
-                                <v-text-field 
-                                class="mb-6" 
-                                label="Password" 
-                                :type="showPassword ? 'text' : 'password'" 
-                                v-model="passwd1" 
-                                :append-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                                @click:append="showPassword = !showPassword"
-                                clearable>
+                                <v-text-field label="Username" v-model="username1"
+                                    append-icon="mdi-account-box-edit-outline" clearable>
                                 </v-text-field>
-                                <v-btn class="white--text font-weight-bold" :loading="loading" :disabled="loading" color="blue accent-2"
-                                    outlined rounded @click="login();loader = 'loading'">
+                                <v-text-field class="mb-6" label="Password" :type="showPassword ? 'text' : 'password'"
+                                    v-model="passwd1" :append-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                                    @click:append="showPassword = !showPassword" clearable>
+                                </v-text-field>
+                                <v-btn class="white--text font-weight-bold" :loading="loading" :disabled="loading"
+                                    color="blue accent-2" outlined rounded @click="login();loader = 'loading'">
                                     Log in
                                 </v-btn>
                             </v-container>
@@ -57,11 +54,13 @@
                                 </v-text-field>
                                 <v-text-field label="Password" v-model="passwd2" clearable>
                                 </v-text-field>
-                                <v-text-field label="Email" v-model="email" append-icon="mdi-email-check-outline" :rules="[rules.email]" clearable>
+                                <v-text-field label="Email" v-model="email" append-icon="mdi-email-check-outline"
+                                    :rules="[rules.email]" clearable>
                                 </v-text-field>
-                                <v-text-field label="Phonenumber" v-model="phonenumber" append-icon="mdi-phone" :rules="[rules.phone]" clearable>
+                                <v-text-field label="Phonenumber" v-model="phonenumber" append-icon="mdi-phone"
+                                    :rules="[rules.phone]" clearable>
                                 </v-text-field>
-                                <v-select label="Interest" :items="items"  placeholder="请选择你的兴趣" v-model="interestName" dense append-icon="mdi-heart" multiple></v-select>
+                                <!-- <v-select label="Interest" :items="items"  placeholder="请选择你的兴趣" v-model="interestName" dense append-icon="mdi-heart" multiple></v-select> -->
                                 <v-btn class="mt-6 white--text font-weight-bold" :loading="loading" :disabled="loading"
                                     color="blue accent-2" outlined rounded @click="signup();loader = 'loading'">
                                     Sign up
@@ -78,110 +77,118 @@
 
 <script>
     export default {
-      name: 'LoginRegster',
-            data: () => ({
-                username1: '',
-                passwd1: '',
-                username2: '',
-                passwd2: '',
-                email: '',
-                phonenumber: '',
-                loading: false,
-                loader: null,
-                showPassword: false,
-                interestName:'',
-                interests:[], 
-                items: [{text:'历史遗迹',value:1},{text:'自然景观',value:2},{text:'公园',value:3},{text:'博物馆/科技馆',value:4},{text:'游乐园',value:5},{text:'动物园/植物园',value:6},{text:'学校',value:7}],
-                rules: {
-                    email: value => {
-                        const pattern = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
-                        return pattern.test(value) || 'Invalid email format.';
-                    },
-                    phone: value => {
-                        const pattern = /^1[3456789]\d{9}$/;
-                        return pattern.test(value) || 'Invalid phone number format.';
-                    }
+        name: 'LoginRegster',
+        data: () => ({
+            //登录
+            username1: '',
+            passwd1: '',
+            //注册
+            username2: '',
+            passwd2: '',
+            email: '',
+            phonenumber: '',
+            loading: false,
+            loader: null,
+            showPassword: false,
+            // interestName:'',
+            // interests:[], 
+            // items: [{text:'历史遗迹',value:1},{text:'自然景观',value:2},{text:'公园',value:3},{text:'博物馆/科技馆',value:4},{text:'游乐园',value:5},{text:'动物园/植物园',value:6},{text:'学校',value:7}],
+            rules: {
+                email: value => {
+                    const pattern = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
+                    return pattern.test(value) || 'Invalid email format.';
+                },
+                phone: value => {
+                    const pattern = /^1[3456789]\d{9}$/;
+                    return pattern.test(value) || 'Invalid phone number format.';
                 }
-            }),
-            watch: {
-                loader() {
-                    const l = this.loader
-                    this[l] = !this[l]
-                    setTimeout(() => (this[l] = false), 2000)
-                    this.loader = null
-                },
+            }
+        }),
+        watch: {
+            loader() {
+                const l = this.loader
+                this[l] = !this[l]
+                setTimeout(() => (this[l] = false), 2000)
+                this.loader = null
             },
-            methods: {
-                
-                login: function () {
-                    this.$axios({
-                        method: 'post',
-                        url: 'http://10.129.37.114:8321/login', // 修改为你的接口地址
-                        data: {
-                            userName: this.username1, // 修改为接口需要的参数名
-                            userPassword: this.passwd1, // 修改为接口需要的参数名
-                        },
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    }).then(res => {
-                        console.log(res.data);
-                        if (res.data.code === '0') { // 根据接口文档，错误码为0表示正确
-                            window.alert('登录成功');
-                            this.$router.push('/TravelRecommend');
-                        } else {
-                            window.alert('账号或密码错误，请重试!如未注册，请先注册！')
-                        }
-                    }).catch(function (error) {
-                        console.log(error);
-                        this.loading = false;
-                    })
-                },
-                 signup: function () {
-                    // 验证邮箱
-                    const emailPattern = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
-                    if (!emailPattern.test(this.email)) {
-                        window.alert('请输入有效的邮箱地址');
-                        return;
-                    }
+        },
+        methods: {
 
-                    // 验证电话号码
-                    const phonePattern = /^1[3456789]\d{9}$/;
-                    if (!phonePattern.test(this.phonenumber)) {
-                        window.alert('请输入有效的电话号码');
-                        return;
+            login: function () {
+                const self = this;  // 保存 this 引用
+                this.$axios({
+                    method: 'post',
+                    url: '/auth/login', // 修改为你的接口地址
+                    data: {
+                        username: this.username1, // 修改为接口需要的参数名
+                        password: this.passwd1, // 修改为接口需要的参数名
+                    },
+                    headers: {
+                        'Content-Type': 'application/json',
                     }
-
-                    // 如果邮箱和电话号码都有效，发送请求
-                    this.$axios({
-                        method: 'post',
-                        url: 'http://10.129.37.114:8321/register', // 修改为你的接口地址
-                        data: {
-                            userName: this.username2,
-                            userPassword: this.passwd2,
-                            email: this.email,
-                            phoneNumber: this.phonenumber,
-                             interests: this.interestName.map(id => {
-    // 根据id找到对应的text
-                                const item = this.items.find(item => item.value === id);
-                                return { interestId: id, interestName: item ? item.text : '' };
-                            })
-                        },
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    }).then(res => {
-                        console.log(res.data);
-                        if (res.data.code === '0') {
-                            window.alert('注册成功,请登录');
-                        } else {
-                            window.alert('注册失败，请重试');
-                        }
-                    }).catch(function (error) {
-                        console.log(error);
-                    })
-                },
+                }).then(res => {
+                    console.log(res.data);
+                    if (res.data.code === 200) {
+                        window.alert('登录成功');
+                        self.$router.push('/TravelRecommend');
+                    } else {
+                        window.alert('账号或密码错误，请重试!如未注册，请先注册！')
+                    }
+                }).catch(error => {  // 使用箭头函数
+                    console.log(error);
+                    self.loading = false;
+                });
             },
+            signup: function () {
+                const self = this;  // 保存 this 引用
+                // 验证邮箱
+                const emailPattern = /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/;
+                if (!emailPattern.test(this.email)) {
+                    window.alert('请输入有效的邮箱地址');
+                    return;
+                }
+
+                // 验证电话号码
+                const phonePattern = /^1[3456789]\d{9}$/;
+                if (!phonePattern.test(this.phonenumber)) {
+                    window.alert('请输入有效的电话号码');
+                    return;
+                }
+
+                // 如果邮箱和电话号码都有效，发送请求
+                this.$axios({
+                    method: 'post',
+                    url: '/auth/register',
+                    data: {
+                        username: this.username2,
+                        password: this.passwd2,
+                        email: this.email,
+                        phone: this.phonenumber,
+                        // interests: this.interestName.map(id => {
+                        //     // 根据id找到对应的text
+                        //     const item = this.items.find(item => item.value === id);
+                        //     return { interestId: id, interestName: item ? item.text : '' };
+                        // })
+                    },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                }).then(res => {
+                    console.log(res.data);
+                    console.log("test");
+                    if (res.data.code === 200) {
+                        window.alert('注册成功,请登录');
+                    } else if (res.data.code === 400) {
+                        window.alert(res.data.message);
+                    } else {
+                        window.alert('注册失败，请重试');
+                    }
+                }).catch(error => {  // 使用箭头函数
+                    console.log(error);
+                    self.loading = false;
+                });
+            },
+        },
     };
 </script>
 <style>

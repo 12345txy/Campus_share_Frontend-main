@@ -5,9 +5,15 @@ module.exports = defineConfig({
     'vuetify'
   ],
   devServer: {
-    port: 8321
+    port: 8321,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        ws: true,
+        changeOrigin: true,
+        timeout: 30000  // 添加代理超时时间
+      }
+    }
   },
-  publicPath: process.env.NODE_ENV === 'production'
-    ? '/Data_Structure_Project/' 
-    : '/'
+
 })
