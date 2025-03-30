@@ -129,6 +129,10 @@
                 }).then(res => {
                     console.log(res.data);
                     if (res.data.code === 200) {
+                        // 保存token
+                        localStorage.setItem('token', res.data.data.token);
+                        // 可选：打印token进行调试
+                        console.log('保存的token:', res.data.data.token);
                         window.alert('登录成功');
                         self.$router.push('/TravelRecommend');
                     } else {

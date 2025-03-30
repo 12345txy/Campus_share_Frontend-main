@@ -40,12 +40,12 @@
                             <div class="mt-3 body-1">个人简介：{{ bio || '这个人很懒，什么都没有留下...' }}</div>
                         </v-col>
                         <v-col cols="12" sm="auto" class="text-right pb-6">
-                            <v-btn v-if="!isCurrentUser" color="primary" rounded small class="ma-2"
+                            <v-btn v-if="!isCurrentUser" dark color="indigo" rounded small class="ma-2"
                                 @click="toggleFollow">
                                 <v-icon left>{{ isFollowed ? 'mdi-account-minus' : 'mdi-account-plus' }}</v-icon>
                                 {{ isFollowed ? '取消关注' : '关注' }}
                             </v-btn>
-                            <v-btn color="primary" rounded small class="ma-2" @click="showEditDialog = true">
+                            <v-btn color="indigo" dark rounded small class="ma-2" @click="showEditDialog = true">
                                 <v-icon left>mdi-pencil</v-icon>
                                 编辑资料
                             </v-btn>
@@ -88,20 +88,22 @@
                         <v-divider></v-divider>
                         <v-card-text>
                             <v-form ref="form" v-model="valid">
-                                <v-text-field v-model="editData.nickname" label="昵称" outlined dense
-                                    :rules="[rules.required]"></v-text-field>
+                                <v-text-field v-model="nickname" label="昵称" outlined dense :rules="[rules.required]"
+                                    @input="trackFieldChange('nickname')"></v-text-field>
 
-                                <v-select v-model="editData.gender" :items="genderOptions" label="性别" outlined
-                                    dense></v-select>
+                                <v-select v-model="gender" :items="genderOptions" label="性别" outlined dense
+                                    @change="trackFieldChange('gender')"></v-select>
 
-                                <v-text-field v-model="editData.email" label="邮箱" outlined dense
-                                    :rules="[rules.required, rules.email]"></v-text-field>
+                                <v-text-field v-model="email" label="邮箱" outlined dense
+                                    :rules="[rules.required, rules.email]"
+                                    @input="trackFieldChange('email')"></v-text-field>
 
-                                <v-text-field v-model="editData.phone" label="电话号码" outlined dense
-                                    :rules="[rules.required, rules.phone]"></v-text-field>
+                                <v-text-field v-model="phone" label="电话号码" outlined dense
+                                    :rules="[rules.required, rules.phone]"
+                                    @input="trackFieldChange('phone')"></v-text-field>
 
-                                <v-textarea v-model="editData.bio" label="个人简介" outlined auto-grow
-                                    rows="3"></v-textarea>
+                                <v-textarea v-model="bio" label="个人简介" outlined auto-grow rows="3"
+                                    @input="trackFieldChange('bio')"></v-textarea>
                             </v-form>
                         </v-card-text>
                         <v-divider></v-divider>
@@ -257,7 +259,7 @@
 
             <!-- 内容展示部分 -->
             <v-card flat class="mt-4">
-                <v-tabs v-model="activeTab" background-color="transparent" grow>
+                <v-tabs v-model="activeTab" background-color="transparent" grow color="indigo">
                     <v-tab>
                         <v-icon left>mdi-note-text</v-icon>
                         我的帖子
@@ -271,8 +273,8 @@
                         我赞过的
                     </v-tab>
                 </v-tabs>
-                <!-- <v-divider></v-divider> -->
-                <v-tabs-items v-model="activeTab">
+                <!-- <v-divider></v-dividr> -->
+                <v-tabs-items v-model="activeTab" class="mt-0">
                     <!-- 我的帖子 -->
                     <v-tab-item>
                         <v-container fluid>
@@ -286,7 +288,7 @@
                                             {{ post.content ? post.content.substring(0, 50) + (post.content.length > 50
                                             ? '...' : '') : '暂无内容' }}
                                         </v-card-text>
-                                        <v-card-text class="text--primary py-2">
+                                        <v-card-text class="text--indigo py-2">
                                             <div class="d-flex align-center">
                                                 <v-avatar size="24">
                                                     <v-img :src="post.authorAvatar"></v-img>
@@ -295,15 +297,15 @@
                                                 <v-spacer></v-spacer>
                                                 <div class="d-flex align-center">
                                                     <!-- 点赞按钮 -->
-                                                    <v-btn icon x-small color="blue" class="mr-1"
-                                                        @click="toggleLike(post)">
+                                                    <v-btn icon x-small color="blue" class="mr-1 like-btn"
+                                                        @click.stop="toggleLike(post, $event)">
                                                         <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' :
                                                             'mdi-thumb-up-outline' }}</v-icon>
                                                     </v-btn>
                                                     <span class="mr-2 caption">{{ post.likeCount || 0 }}</span>
                                                     <!-- 收藏按钮 -->
-                                                    <v-btn icon x-small color="red" class="mr-1"
-                                                        @click="toggleFavorite(post)">
+                                                    <v-btn icon x-small color="red" class="mr-1 favorite-btn"
+                                                        @click.stop="toggleFavorite(post, $event)">
                                                         <v-icon small>{{ post.isFavorite ? 'mdi-heart' :
                                                             'mdi-heart-outline' }}</v-icon>
                                                     </v-btn>
@@ -323,7 +325,7 @@
                                 <v-col cols="12" class="text-center py-5">
                                     <v-icon size="64" color="grey lighten-1">mdi-note-text-outline</v-icon>
                                     <div class="mt-3 grey--text text--darken-1">暂无发布的帖子</div>
-                                    <v-btn color="primary" class="mt-3" rounded>
+                                    <v-btn color="indigo" class="mt-3" rounded>
                                         <v-icon left>mdi-plus</v-icon>
                                         发布新帖子
                                     </v-btn>
@@ -345,7 +347,7 @@
                                             {{ post.content ? post.content.substring(0, 50) + (post.content.length > 50
                                             ? '...' : '') : '暂无内容' }}
                                         </v-card-text>
-                                        <v-card-text class="text--primary py-2">
+                                        <v-card-text class="text--indigo py-2">
                                             <div class="d-flex align-center">
                                                 <v-avatar size="24">
                                                     <v-img :src="post.authorAvatar"></v-img>
@@ -354,15 +356,15 @@
                                                 <v-spacer></v-spacer>
                                                 <div class="d-flex align-center">
                                                     <!-- 点赞按钮 -->
-                                                    <v-btn icon x-small color="blue" class="mr-1"
-                                                        @click="toggleLike(post)">
+                                                    <v-btn icon x-small color="blue" class="mr-1 like-btn"
+                                                        @click.stop="toggleLike(post, $event)">
                                                         <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' :
                                                             'mdi-thumb-up-outline' }}</v-icon>
                                                     </v-btn>
                                                     <span class="mr-2 caption">{{ post.likeCount || 0 }}</span>
                                                     <!-- 收藏按钮 -->
-                                                    <v-btn icon x-small color="red" class="mr-1"
-                                                        @click="toggleFavorite(post)">
+                                                    <v-btn icon x-small color="red" class="mr-1 favorite-btn"
+                                                        @click.stop="toggleFavorite(post, $event)">
                                                         <v-icon small>{{ post.isFavorite ? 'mdi-heart' :
                                                             'mdi-heart-outline' }}</v-icon>
                                                     </v-btn>
@@ -382,7 +384,7 @@
                                 <v-col cols="12" class="text-center py-5">
                                     <v-icon size="64" color="grey lighten-1">mdi-heart-outline</v-icon>
                                     <div class="mt-3 grey--text text--darken-1">暂无收藏的帖子</div>
-                                    <v-btn color="primary" class="mt-3" rounded>
+                                    <v-btn color="indigo" class="mt-3" rounded>
                                         <v-icon left>mdi-magnify</v-icon>
                                         去发现
                                     </v-btn>
@@ -404,7 +406,7 @@
                                             {{ post.content ? post.content.substring(0, 50) + (post.content.length > 50
                                             ? '...' : '') : '暂无内容' }}
                                         </v-card-text>
-                                        <v-card-text class="text--primary py-2">
+                                        <v-card-text class="text--indigo py-2">
                                             <div class="d-flex align-center">
                                                 <v-avatar size="24">
                                                     <v-img :src="post.authorAvatar"></v-img>
@@ -413,15 +415,15 @@
                                                 <v-spacer></v-spacer>
                                                 <div class="d-flex align-center">
                                                     <!-- 点赞按钮 -->
-                                                    <v-btn icon x-small color="blue" class="mr-1"
-                                                        @click="toggleLike(post)">
+                                                    <v-btn icon x-small color="blue" class="mr-1 like-btn"
+                                                        @click.stop="toggleLike(post, $event)">
                                                         <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' :
                                                             'mdi-thumb-up-outline' }}</v-icon>
                                                     </v-btn>
                                                     <span class="mr-2 caption">{{ post.likeCount || 0 }}</span>
                                                     <!-- 收藏按钮 -->
-                                                    <v-btn icon x-small color="red" class="mr-1"
-                                                        @click="toggleFavorite(post)">
+                                                    <v-btn icon x-small color="red" class="mr-1 favorite-btn"
+                                                        @click.stop="toggleFavorite(post, $event)">
                                                         <v-icon small>{{ post.isFavorite ? 'mdi-heart' :
                                                             'mdi-heart-outline' }}</v-icon>
                                                     </v-btn>
@@ -441,7 +443,7 @@
                                 <v-col cols="12" class="text-center py-5">
                                     <v-icon size="64" color="grey lighten-1">mdi-thumb-up-outline</v-icon>
                                     <div class="mt-3 grey--text text--darken-1">暂无点赞的帖子</div>
-                                    <v-btn color="primary" class="mt-3" rounded>
+                                    <v-btn color="indigo" class="mt-3" rounded>
                                         <v-icon left>mdi-magnify</v-icon>
                                         去发现
                                     </v-btn>
@@ -561,6 +563,7 @@
             selectedPost: null,
             comments: [],
             newComment: '',
+            formChanged: false,
         }),
 
         created() {
@@ -575,7 +578,7 @@
         methods: {
             fetchUserProfile() {
                 // 从后端获取用户信息
-                this.$axios.get('/api/user/profile')
+                this.$axios.get('/user/profile')
                     .then(res => {
                         if (res.data.code === 200) {
                             const data = res.data.data
@@ -595,7 +598,7 @@
 
             fetchUserStats() {
                 // 修改获取用户统计数据
-                this.$axios.get('/api/user/stats')
+                this.$axios.get('/user/stats')
                     .then(res => {
                         if (res.data.code === 200) {
                             const data = res.data.data
@@ -617,7 +620,7 @@
 
             fetchUserPosts() {
                 // 模拟获取用户帖子
-                this.$axios.get('/api/user/posts')
+                this.$axios.get('/user/posts')
                     .then(res => {
                         if (res.data.code === 200) {
                             this.myPosts = res.data.data
@@ -659,7 +662,7 @@
 
             fetchUserFavorites() {
                 // 模拟获取用户收藏
-                this.$axios.get('/api/user/favorites')
+                this.$axios.get('/user/favorites')
                     .then(res => {
                         if (res.data.code === 200) {
                             this.favoritePosts = res.data.data
@@ -701,7 +704,7 @@
 
             fetchUserLikedPosts() {
                 // 模拟获取用户点赞的帖子
-                this.$axios.get('/api/user/liked-posts')
+                this.$axios.get('/user/liked-posts')
                     .then(res => {
                         if (res.data.code === 200) {
                             this.likedPosts = res.data.data
@@ -775,7 +778,7 @@
                     const formData = new FormData()
                     formData.append('avatar', this.avatarFile)
 
-                    this.$axios.post('/api/user/avatar/update', formData, {
+                    this.$axios.post('/user/avatar/update', formData, {
                         headers: {
                             'Content-Type': 'multipart/form-data'
                         }
@@ -808,17 +811,20 @@
 
             async saveProfile() {
                 this.loading = true
-                const formData = new FormData()
-                formData.append('nickname', this.nickname)
-                formData.append('gender', this.gender)
-                formData.append('email', this.email)
-                formData.append('phone', this.phone)
-                formData.append('bio', this.bio)
+
+                // 使用JSON格式
+                const userData = {
+                    nickname: this.nickname,
+                    gender: this.gender,
+                    email: this.email,
+                    phone: this.phone,
+                    bio: this.bio
+                }
 
                 try {
-                    const res = await this.$axios.post('/api/user/profile/update', formData, {
+                    const res = await this.$axios.put('/user/profile', userData, {
                         headers: {
-                            'Content-Type': 'multipart/form-data'
+                            'Content-Type': 'application/json'
                         }
                     })
 
@@ -845,7 +851,7 @@
             checkFollowStatus() {
                 // 模拟检查是否已关注该用户
                 // 在实际应用中，应该从后端获取关注状态
-                this.$axios.get('/api/user/follow/status', {
+                this.$axios.get('/user/follow/status', {
                     params: { userId: this.$route.params.id } // 假设路由参数中有用户ID
                 })
                     .then(res => {
@@ -872,7 +878,7 @@
 
             followUser() {
                 // 关注用户
-                this.$axios.post('/api/user/follow', {
+                this.$axios.post('/user/follow', {
                     followingId: this.$route.params.id // 假设路由参数中有用户ID
                 })
                     .then(res => {
@@ -892,7 +898,7 @@
 
             unfollowUser() {
                 // 取消关注
-                this.$axios.post('/api/user/unfollow', {
+                this.$axios.post('/user/unfollow', {
                     followingId: this.$route.params.id // 假设路由参数中有用户ID
                 })
                     .then(res => {
@@ -912,31 +918,35 @@
 
             toggleFavorite(post) {
                 // 切换收藏状态
-                post.isFavorite = !post.isFavorite;
+                this.$set(post, 'isFavorite', !post.isFavorite);
+                post.favorites = post.isFavorite ? (post.favorites || 0) + 1 : (post.favorites || 1) - 1;
 
                 // 向后端发送更新请求
-                this.$axios.post(`/api/posts/${post.id}/favorite`, {
+                this.$axios.post(`/posts/${post.id}/favorite`, {
                     favorite: post.isFavorite
                 }).catch(error => {
                     console.error('更新收藏状态失败:', error);
                     // 失败时恢复状态
-                    post.isFavorite = !post.isFavorite;
+                    this.$set(post, 'isFavorite', !post.isFavorite);
+                    post.favorites = post.isFavorite ? post.favorites + 1 : post.favorites - 1;
                 });
             },
 
             toggleLike(post) {
                 // 切换点赞状态
-                post.isLiked = !post.isLiked;
+                this.$set(post, 'isLiked', !post.isLiked);
                 post.likeCount = post.isLiked ? (post.likeCount || 0) + 1 : (post.likeCount || 1) - 1;
+                post.likes = post.isLiked ? (post.likes || 0) + 1 : (post.likes || 1) - 1;
 
                 // 向后端发送更新请求
-                this.$axios.post(`/api/posts/${post.id}/like`, {
+                this.$axios.post(`/posts/${post.id}/like`, {
                     like: post.isLiked
                 }).catch(error => {
                     console.error('更新点赞状态失败:', error);
                     // 失败时恢复状态
-                    post.isLiked = !post.isLiked;
+                    this.$set(post, 'isLiked', !post.isLiked);
                     post.likeCount = post.isLiked ? post.likeCount + 1 : post.likeCount - 1;
+                    post.likes = post.isLiked ? post.likes + 1 : post.likes - 1;
                 });
             },
 
@@ -949,7 +959,7 @@
 
             fetchComments(postId) {
                 // 获取帖子评论
-                this.$axios.get(`/api/posts/${postId}/comments`)
+                this.$axios.get(`/posts/${postId}/comments`)
                     .then(res => {
                         if (res.data.code === 200) {
                             this.comments = res.data.data;
@@ -981,7 +991,7 @@
                 if (!this.newComment.trim()) return;
 
                 // 向后端发送添加评论请求
-                this.$axios.post(`/api/posts/${this.selectedPost.id}/comments`, {
+                this.$axios.post(`/posts/${this.selectedPost.id}/comments`, {
                     content: this.newComment
                 })
                     .then(res => {
@@ -1006,7 +1016,14 @@
                         this.selectedPost.comments = (this.selectedPost.comments || 0) + 1;
                         this.newComment = ''; // 清空输入框
                     });
-            }
+            },
+
+            trackFieldChange(fieldName) {
+                // 可以用于跟踪表单字段变化
+                console.log(`字段 ${fieldName} 已更改`);
+                // 如需要，可以设置标记表示表单已修改
+                this.formChanged = true;
+            },
         }
     }
 </script>
@@ -1055,5 +1072,19 @@
         font-size: 0.875rem;
         color: rgba(0, 0, 0, 0.6);
         padding-bottom: 0;
+    }
+
+    /* 增强图标样式 */
+    .like-btn .v-icon,
+    .favorite-btn .v-icon {
+        transition: all 0.3s ease;
+    }
+
+    .v-btn.like-btn:deep(.v-icon) {
+        color: blue !important;
+    }
+
+    .v-btn.favorite-btn:deep(.v-icon) {
+        color: red !important;
     }
 </style>

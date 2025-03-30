@@ -25,6 +25,19 @@ Vue.use(G6);
 axios.defaults.baseURL = '/api'; 
 axios.defaults.timeout = 30000;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
+// 请求拦截器
+axios.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+    console.log("token的值为",token);
+    if (token) {
+      // 附加token到Authorization头
+        console.log("添加头");
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+}, error => {
+    return Promise.reject(error);
+});
 Vue.config.productionTip = false
 
 new Vue({

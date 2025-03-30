@@ -1,4 +1,3 @@
-
 <template>
     <v-container>
         <v-form @submit.prevent="savePost">
@@ -31,19 +30,28 @@
 
             <v-row class="mt-4">
                 <v-col cols="12">
-                    <v-file-input v-model="images" counter label="上传图片" multiple prepend-icon="mdi-camera" show-size
-                        accept="image/*" :rules="[v => !v || v.length <= 5 || '最多上传5张图片']"
-                        @change="previewImages"></v-file-input>
+                    <v-file-input v-model="singleImage" counter label="选择单张图片" prepend-icon="mdi-camera" show-size
+                        accept="image/*" @change="addSingleImage" hint="可多次添加不同图片，第一张图片将作为封面"
+                        persistent-hint></v-file-input>
                 </v-col>
             </v-row>
 
             <v-row v-if="imagePreviewUrls.length > 0" class="mt-2">
                 <v-col cols="12">
+                    <div class="d-flex align-center mb-2">
+                        <v-chip color="indigo" text-color="white" small>
+                            已上传 {{ imagePreviewUrls.length }} 张图片
+                        </v-chip>
+                        <span class="ml-2 caption">第一张图片将作为封面显示</span>
+                    </div>
                     <div class="d-flex flex-wrap">
                         <v-card v-for="(url, index) in imagePreviewUrls" :key="index" class="ma-2" width="150"
                             height="150">
                             <v-img :src="url" height="120" contain></v-img>
                             <v-card-actions class="pa-0 justify-center">
+                                <v-badge color="primary" dot v-if="index === 0">
+                                    <span class="caption mr-2">封面</span>
+                                </v-badge>
                                 <v-btn icon small color="error" @click="removeImage(index)">
                                     <v-icon>mdi-close</v-icon>
                                 </v-btn>
@@ -100,9 +108,11 @@
                     author: '',
                     category: '',
                     tags: [],
-                    imageUrls: []
+                    images: [],
+                    coverImage: ''
                 },
-                images: [],
+                singleImage: null,  // 新增：单张图片文件
+                images: [],         // 所有已上传图片的集合
                 imagePreviewUrls: [],
                 availableTags: [
                     '校园生活', '学习心得', '美食分享', '旅游攻略', '活动公告',
@@ -136,11 +146,27 @@
             removeImage(index) {
                 // 从预览数组和文件数组中移除图片
                 this.imagePreviewUrls.splice(index, 1);
+                this.images.splice(index, 1);
+            },
+            addSingleImage() {
+                if (this.singleImage) {
+                    // 限制最多5张图片
+                    if (this.images.length >= 5) {
+                        alert('最多只能上传5张图片');
+                        this.singleImage = null;
+                        return;
+                    }
 
-                // 创建新的文件数组（因为v-file-input的值不能直接修改）
-                const newFiles = Array.from(this.images);
-                newFiles.splice(index, 1);
-                this.images = newFiles.length ? newFiles : [];
+                    // 创建预览URL
+                    const url = URL.createObjectURL(this.singleImage);
+                    this.imagePreviewUrls.push(url);
+
+                    // 添加到图片数组
+                    this.images.push(this.singleImage);
+
+                    // 清空单张图片选择器，允许继续选择
+                    this.singleImage = null;
+                }
             },
             savePost() {
                 // 验证必填项
@@ -149,19 +175,37 @@
                     return;
                 }
 
-                // 处理图片上传（实际应用中需要将图片上传到服务器）
-                // 这里仅做演示，实际项目中需要替换为真实的上传逻辑
+                // 处理图片上传
                 if (this.images.length) {
-                    // 在实际应用中，这里应该有上传图片的代码
-                    // 上传成功后会获取图片URL，存储在post.imageUrls中
-                    this.post.imageUrls = this.imagePreviewUrls;
+                    // 模拟上传成功后获取URL
+                    this.post.images = [...this.imagePreviewUrls]; // 复制数组到post.images
+
+                    // 设置第一张图为封面图
+                    if (this.imagePreviewUrls.length > 0) {
+                        this.post.coverImage = this.imagePreviewUrls[0];
+                    }
                 }
 
                 // 使用Vuex保存帖子数据
                 // this.$store.commit('setPost', this.post);
 
-                // 模拟API请求
+                // 模拟API请求发送到后端
                 console.log('保存的帖子数据:', this.post);
+
+                // 实际项目中发送到后端的代码应该类似:
+                /*
+                this.$axios.post('/api/posts', this.post)
+                    .then(response => {
+                        if (response.data.code === 200) {
+                            this.success();
+                            this.resetForm();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('发布帖子失败:', error);
+                        alert('发布失败，请重试');
+                    });
+                */
 
                 // 成功提示
                 this.success();
@@ -177,7 +221,8 @@
                     author: '',
                     category: '',
                     tags: [],
-                    imageUrls: []
+                    images: [],
+                    coverImage: ''
                 };
                 this.images = [];
                 this.imagePreviewUrls = [];

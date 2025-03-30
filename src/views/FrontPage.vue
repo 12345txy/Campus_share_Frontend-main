@@ -55,7 +55,7 @@
             <!-- 标签筛选 -->
             <v-container class="pt-0 pb-2">
                 <div class="d-flex justify-center">
-                    <v-chip-group active-class="primary--text" column>
+                    <v-chip-group active-class="primary--text" column multiple>
                         <v-chip v-for="tag in popularTags" :key="tag" :input-value="selectedTags.includes(tag)"
                             @click="toggleTag(tag)" filter outlined>
                             #{{ tag }}
@@ -66,7 +66,7 @@
 
             <!-- 排序选项 -->
             <v-container pt-0>
-                <v-chip-group column active-class="indigo--text" v-model="sortOption" mandatory>
+                <v-chip-group column active-class="indigo--text" v-model="sortOption">
                     <v-chip filter outlined>最新</v-chip>
                     <v-chip filter outlined>热门</v-chip>
                     <v-chip filter outlined>推荐</v-chip>
@@ -76,10 +76,29 @@
                 <v-container>
                     <v-row>
                         <v-col v-for="post in posts" :key="post.id" cols="12" sm="6" md="4">
-                            <v-card class="mx-auto" max-width="400" hover>
-                                <v-img :src="post.coverImage" height="200" class="white--text align-end">
-                                    <v-card-title class="text-h6">{{ post.title }}</v-card-title>
-                                </v-img>
+                            <v-card class="mx-auto" max-width="400" hover @click="openPostDetail(post)">
+                                <!-- 轮播图或单图容器 -->
+                                <div class="carousel-container" style="position: relative;">
+                                    <!-- 多图轮播 -->
+                                    <template v-if="post.images && post.images.length > 1">
+                                        <v-carousel height="200" show-arrows="true" hide-delimiter-background
+                                            :hide-delimiters="false" show-arrows-on-hover>
+                                            <v-carousel-item v-for="(image, i) in post.images" :key="i" :src="image"
+                                                cover></v-carousel-item>
+                                        </v-carousel>
+                                    </template>
+
+                                    <!-- 单图显示 -->
+                                    <v-img v-else :src="post.coverImage || (post.images && post.images[0])" height="200"
+                                        class="white--text align-end">
+                                    </v-img>
+
+                                    <!-- 固定位置的标题覆盖层，不管是轮播还是单图都显示 -->
+                                    <div class="carousel-title-overlay">
+                                        <span class="text-h6 white--text">{{ post.title }}</span>
+                                    </div>
+                                </div>
+
                                 <v-card-text class="content-preview">
                                     {{ post.content ? post.content.substring(0, 50) + (post.content.length > 50 ? '...'
                                     : '') : '暂无内容' }}
@@ -96,14 +115,20 @@
 
                                 <v-card-text class="text--primary py-2">
                                     <div class="d-flex align-center">
-                                        <v-avatar size="24">
-                                            <v-img :src="post.authorAvatar"></v-img>
+                                        <v-avatar size="30">
+                                            <img :src="post.authorAvatar" alt="avatar" @error="handleImageError">
                                         </v-avatar>
                                         <span class="ml-1 caption">{{ post.authorName }}</span>
+                                        <v-btn outlined x-small dark :color="post.isFollowing ? 'grey' : 'indigo'"
+                                            @click.stop="toggleFollow(post, $event)" class="follow-btn ml-2">
+                                            <v-icon class="mr-0" x-small left>{{ post.isFollowing ? 'mdi-account-minus' :
+                                                'mdi-account-plus' }}</v-icon>
+                                            {{ post.isFollowing ? '已关注' : '关注' }}
+                                        </v-btn>
                                         <v-spacer></v-spacer>
                                         <div class="d-flex align-center">
                                             <!-- 点赞按钮 -->
-                                            <v-btn icon x-small color="blue" class="mr-1 like-btn"
+                                            <v-btn icon x-small color="indigo" class="mr-1 like-btn"
                                                 @click.stop="toggleLike(post, $event)"
                                                 :class="{'pulse-animation': post.isLiked}">
                                                 <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' : 'mdi-thumb-up-outline'
@@ -123,8 +148,8 @@
                                                 :class="{'red--text': post.isFavorite}">{{ post.favorites || 0 }}</span>
 
                                             <!-- 评论按钮 -->
-                                            <v-btn icon x-small class="mr-1" @click="openComments(post)">
-                                                <v-icon small>mdi-comment-outline</v-icon>
+                                            <v-btn icon x-small class="mr-1" @click.stop="openComments(post, $event)">
+                                                <v-icon color="blue" small>mdi-comment-outline</v-icon>
                                             </v-btn>
                                             <span class="caption">{{ post.comments || 0 }}</span>
                                         </div>
@@ -164,9 +189,15 @@
                                     <v-list-item-content>
                                         <v-list-item-title>{{ comment.authorName }}</v-list-item-title>
                                         <v-list-item-subtitle>{{ comment.content }}</v-list-item-subtitle>
-                                        <v-btn x-small text color="primary" class="mt-1"
-                                            @click="prepareReply(comment)">回复</v-btn>
+                                        <div class="caption grey--text text--darken-1 mt-1">
+                                            {{ comment.createTime || '刚刚' }}
+                                        </div>
                                     </v-list-item-content>
+                                    <v-list-item-action>
+                                        <v-btn x-small text color="primary" @click="prepareReply(comment)">
+                                            回复
+                                        </v-btn>
+                                    </v-list-item-action>
                                 </v-list-item>
 
                                 <!-- 嵌套回复 -->
@@ -220,6 +251,106 @@
                     </v-card-actions>
                 </v-card>
             </v-dialog>
+
+            <!-- 帖子详情对话框 -->
+            <v-dialog v-model="postDetailDialog" max-width="700">
+                <v-card v-if="selectedPost" class="pa-0">
+                    <!-- 直接使用与列表完全相同的帖子卡片结构，只移除高度限制 -->
+                    <v-card flat class="post-detail">
+                        <!-- 帖子头部信息 -->
+                        <v-card-title class="pb-1">
+                            <v-row align="center" class="mx-0">
+                                <v-avatar size="40">
+                                    <img :src="selectedPost.authorAvatar" alt="avatar" @error="handleImageError">
+                                </v-avatar>
+                                <div class="ml-3">
+                                    <div class="subtitle-1 font-weight-medium">{{ selectedPost.authorName }}</div>
+                                    <div class="caption text--secondary">{{ selectedPost.createTime }}</div>
+                                </div>
+                                <v-spacer></v-spacer>
+                                <!-- 添加关注按钮 -->
+                                <v-btn small outlined :color="selectedPost.isFollowing ? 'grey' : 'indigo'"
+                                    @click.stop="toggleFollow(selectedPost)" class="follow-btn">
+                                    <v-icon small left>{{ selectedPost.isFollowing ? 'mdi-account-minus' :
+                                        'mdi-account-plus' }}</v-icon>
+                                    {{ selectedPost.isFollowing ? '已关注' : '关注' }}
+                                </v-btn>
+                            </v-row>
+                        </v-card-title>
+
+                        <!-- 帖子标题 -->
+                        <v-card-title class="pt-0 pb-2 pt-4 text-h6">
+                            {{ selectedPost.title }}
+                        </v-card-title>
+
+                        <!-- 帖子内容 - 无高度限制 -->
+                        <v-card-text>
+                            <div class="body-1 content-preview">{{ selectedPost.content }}</div>
+                        </v-card-text>
+
+                        <!-- 帖子图片 -->
+                        <v-card-text
+                            v-if="selectedPost.coverImage || (selectedPost.images && selectedPost.images.length > 0)"
+                            class="pt-0">
+                            <!-- 单张图片 - 处理coverImage或images[0]情况 -->
+                            <v-img v-if="!selectedPost.images || selectedPost.images.length <= 1"
+                                :src="selectedPost.coverImage || (selectedPost.images && selectedPost.images[0])"
+                                max-height="300" contain class="rounded-lg"></v-img>
+
+                            <!-- 多张图片网格 -->
+                            <v-row v-else dense>
+                                <v-col v-for="(image, index) in selectedPost.images" :key="index" cols="4">
+                                    <v-img :src="image" aspect-ratio="1" class="rounded"></v-img>
+                                </v-col>
+                            </v-row>
+                        </v-card-text>
+
+                        <!-- 标签和分类 -->
+                        <v-card-text class="py-1">
+                            <v-chip v-for="tag in selectedPost.tags" :key="tag" small class="mr-1" color="indigo"
+                                text-color="white">
+                                #{{ tag }}
+                            </v-chip>
+                        </v-card-text>
+
+                        <!-- 互动按钮 - 保持原有的图标和事件处理 -->
+                        <v-card-actions>
+                            <!-- 使用原始点赞图标 mdi-thumb-up -->
+                            <v-btn text @click.stop="toggleLike(selectedPost, $event)" class="like-btn">
+                                <v-icon color="indigo">
+                                    {{ selectedPost.isLiked ? 'mdi-thumb-up' : 'mdi-thumb-up-outline' }}
+                                </v-icon>
+                                <span class="ml-1 like-count-text">
+                                    {{ selectedPost.likeCount || 0 }}
+                                </span>
+                            </v-btn>
+                            <!-- 收藏按钮 -->
+                            <v-btn text @click.stop="toggleFavorite(selectedPost, $event)" class="favorite-btn">
+                                <v-icon color="red">
+                                    {{ selectedPost.isFavorite ? 'mdi-heart' : 'mdi-heart-outline' }}
+                                </v-icon>
+                                <span class="ml-1 favorite-count-text">
+                                    {{ selectedPost.favorites || 0 }}
+                                </span>
+                            </v-btn>
+
+
+                            <!-- 评论按钮 -->
+                            <v-btn text @click.native.stop="openComments(selectedPost, $event)" class="mr-2">
+                                <v-icon color="blue">mdi-comment-outline</v-icon>
+                                <span class="ml-1">{{ selectedPost.comments || 0 }}</span>
+                            </v-btn>
+
+
+                            <v-spacer></v-spacer>
+
+                            <v-btn color="primary" text @click="postDetailDialog = false">
+                                关闭
+                            </v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-card>
+            </v-dialog>
         </v-container>
     </v-app>
 </template>
@@ -259,7 +390,9 @@
             currentUser: {
                 id: 1,
                 avatar: 'https://cdn.vuetifyjs.com/images/john.jpg'
-            }
+            },
+
+            postDetailDialog: false,  // 控制帖子详情对话框的显示
         }),
 
         computed: {
@@ -382,12 +515,13 @@
                 })
                     .then(response => {
                         if (response.data.code === 200) {
-                            // 确保 isFavorite 和 isLiked 属性被初始化
+                            // 确保初始化所有状态字段
                             this.posts = response.data.data.map(post => {
                                 return {
                                     ...post,
                                     isFavorite: post.isFavorite || false,
-                                    isLiked: post.isLiked || false
+                                    isLiked: post.isLiked || false,
+                                    isFollowing: post.isFollowing || false
                                 };
                             });
                         }
@@ -401,6 +535,7 @@
                                 title: '杭州西湖一日游',
                                 content: '杭州西湖是中国著名的旅游景点，我在这里度过了愉快的一天。湖水清澈，景色优美，特别推荐断桥和雷峰塔。',
                                 coverImage: 'https://cdn.vuetifyjs.com/images/cards/sunshine.jpg',
+                                images: ['https://cdn.vuetifyjs.com/images/cards/sunshine.jpg', 'https://cdn.vuetifyjs.com/images/cards/house.jpg', 'https://cdn.vuetifyjs.com/images/cards/road.jpg', 'https://cdn.vuetifyjs.com/images/cards/cooking.png', 'https://cdn.vuetifyjs.com/images/cards/docks.jpg', 'https://cdn.vuetifyjs.com/images/cards/hotel.jpg'],
                                 authorName: '旅行达人',
                                 authorAvatar: 'https://cdn.vuetifyjs.com/images/john.jpg',
                                 category: '旅游',
@@ -410,7 +545,8 @@
                                 comments: 8,
                                 isFavorite: false,
                                 isLiked: false,
-                                createTime: '2023-12-01 15:30'
+                                createTime: '2023-12-01 15:30',
+                                isFollowing: false
                             },
                             {
                                 id: 2,
@@ -426,7 +562,8 @@
                                 comments: 5,
                                 isFavorite: true,
                                 isLiked: false,
-                                createTime: '2023-11-28 20:15'
+                                createTime: '2023-11-28 20:15',
+                                isFollowing: false
                             },
                             {
                                 id: 3,
@@ -442,7 +579,8 @@
                                 comments: 42,
                                 isFavorite: true,
                                 isLiked: false,
-                                createTime: '2023-11-25 10:45'
+                                createTime: '2023-11-25 10:45',
+                                isFollowing: false
                             },
                             {
                                 id: 4,
@@ -458,7 +596,8 @@
                                 comments: 35,
                                 isFavorite: false,
                                 isLiked: true,
-                                createTime: '2023-11-22 18:30'
+                                createTime: '2023-11-22 18:30',
+                                isFollowing: false
                             },
                             {
                                 id: 5,
@@ -474,7 +613,8 @@
                                 comments: 48,
                                 isFavorite: false,
                                 isLiked: true,
-                                createTime: '2023-11-20 14:15'
+                                createTime: '2023-11-20 14:15',
+                                isFollowing: false
                             },
                             {
                                 id: 6,
@@ -490,17 +630,15 @@
                                 comments: 27,
                                 isFavorite: true,
                                 isLiked: true,
-                                createTime: '2023-11-18 09:20'
+                                createTime: '2023-11-18 09:20',
+                                isFollowing: false
                             }
                         ];
                     });
             },
 
             toggleLike(post, event) {
-                // 创建按钮动画效果
-                const btn = event.currentTarget;
-                btn.classList.add('clicked');
-
+                event.stopPropagation(); // 阻止事件冒泡
                 // 切换状态
                 post.isLiked = !post.isLiked;
                 console.log("post.isLiked", post.isLiked);
@@ -508,6 +646,7 @@
                 post.likes = post.isLiked ? (post.likes || 0) + 1 : (post.likes || 1) - 1;
 
                 // 恢复按钮状态
+                const btn = event.currentTarget; // 获取触发事件的按钮
                 setTimeout(() => {
                     btn.classList.remove('clicked');
                 }, 300);
@@ -541,15 +680,13 @@
             },
 
             toggleFavorite(post, event) {
-                // 创建按钮动画效果
-                const btn = event.currentTarget;
-                btn.classList.add('clicked');
-
+                event.stopPropagation(); // 阻止事件冒泡
                 // 切换状态
                 post.isFavorite = !post.isFavorite;
                 post.favorites = post.isFavorite ? (post.favorites || 0) + 1 : (post.favorites || 1) - 1;
 
                 // 恢复按钮状态
+                const btn = event.currentTarget; // 获取触发事件的按钮
                 setTimeout(() => {
                     btn.classList.remove('clicked');
                 }, 300);
@@ -582,56 +719,69 @@
                     });
             },
 
-            openComments(post) {
+            openComments(post, event) {
+                if (event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    setTimeout(() => {
+                        this.selectedPost = post;
+                        this.commentDialog = true;
+                        this.newComment = '';
+                        this.replyingTo = null;
+                        this.replyParentId = null;
+
+                        // 获取评论数据
+                        this.$axios.get(`/api/posts/${post.id}/comments`)
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.comments = response.data.data.map(comment => {
+                                        return {
+                                            ...comment,
+                                            replies: comment.replies || []
+                                        };
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('获取评论失败:', error);
+                                // 模拟评论数据
+                                this.comments = [
+                                    {
+                                        id: 1,
+                                        content: '这篇帖子很不错，我很喜欢！',
+                                        authorName: '评论用户1',
+                                        authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/1.jpg',
+                                        createTime: '2023-11-20 15:30',
+                                        replies: [
+                                            {
+                                                id: 3,
+                                                content: '谢谢你的评论！',
+                                                authorName: '楼主',
+                                                authorAvatar: post.authorAvatar,
+                                                createTime: '2023-11-20 16:10',
+                                                replyTo: '评论用户1'
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        id: 2,
+                                        content: '内容很有深度，值得推荐！',
+                                        authorName: '评论用户2',
+                                        authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
+                                        createTime: '2023-11-20 14:45',
+                                        replies: []
+                                    }
+                                ];
+                            });
+                    }, 10);
+                    return;
+                }
+
                 this.selectedPost = post;
                 this.commentDialog = true;
                 this.newComment = '';
                 this.replyingTo = null;
                 this.replyParentId = null;
-
-                // 从后端获取评论列表
-                this.$axios.get(`/api/posts/${post.id}/comments`)
-                    .then(response => {
-                        if (response.data.code === 200) {
-                            this.comments = response.data.data.map(comment => {
-                                return {
-                                    ...comment,
-                                    replies: comment.replies || []
-                                };
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('获取评论失败:', error);
-                        // 模拟评论数据
-                        this.comments = [
-                            {
-                                id: 1,
-                                content: '这篇帖子很不错，我很喜欢！',
-                                authorName: '评论用户1',
-                                authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/1.jpg',
-                                createTime: '2023-11-20 15:30',
-                                replies: [
-                                    {
-                                        id: 3,
-                                        content: '谢谢你的评论！',
-                                        authorName: '楼主',
-                                        authorAvatar: post.authorAvatar,
-                                        createTime: '2023-11-20 16:10',
-                                        replyTo: '评论用户1'
-                                    }
-                                ]
-                            },
-                            {
-                                id: 2,
-                                content: '内容很有深度，值得推荐！',
-                                authorName: '评论用户2',
-                                authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
-                                createTime: '2023-11-20 14:45',
-                                replies: []
-                            }
-                        ];
-                    });
             },
 
             prepareReply(comment, parentId = null) {
@@ -745,6 +895,78 @@
                 this.newComment = ''; // 清空输入框
                 this.replyingTo = null;
                 this.replyParentId = null;
+            },
+
+            prevImage(event) {
+                event.stopPropagation();
+                const carousel = event.currentTarget.closest('.v-carousel');
+                if (carousel) {
+                    const carouselComponent = this.$parent.$children.find(
+                        child => child.$el === carousel && child.$options._componentTag === 'v-carousel'
+                    );
+                    if (carouselComponent) {
+                        carouselComponent.prev();
+                    }
+                }
+            },
+
+            nextImage(event) {
+                event.stopPropagation();
+                const carousel = event.currentTarget.closest('.v-carousel');
+                if (carousel) {
+                    const carouselComponent = this.$parent.$children.find(
+                        child => child.$el === carousel && child.$options._componentTag === 'v-carousel'
+                    );
+                    if (carouselComponent) {
+                        carouselComponent.next();
+                    }
+                }
+            },
+
+            openPostDetail(post) {
+                console.log('打开帖子详情:', post);
+                this.selectedPost = {
+                    ...post,
+                    authorAvatar: post.authorAvatar || 'https://cdn.vuetifyjs.com/images/john.jpg'
+                };
+                this.postDetailDialog = true;
+            },
+
+            handleImageError(e) {
+                e.target.src = 'https://cdn.vuetifyjs.com/images/john.jpg';
+            },
+
+            toggleFollow(post, event) {
+                if (event) event.stopPropagation(); // 阻止事件冒泡
+
+                // 切换关注状态
+                post.isFollowing = !post.isFollowing;
+
+                // 显示提示消息
+                this.$nextTick(() => {
+                    if (post.isFollowing) {
+                        this.$toast ? this.$toast.success(`已关注 ${post.authorName}`) : console.log(`已关注 ${post.authorName}`);
+                    } else {
+                        this.$toast ? this.$toast.info(`已取消关注 ${post.authorName}`) : console.log(`已取消关注 ${post.authorName}`);
+                    }
+                });
+
+                // 向后端发送关注/取消关注请求
+                this.$axios.post(`/api/users/follow`, {
+                    userId: post.authorId,
+                    follow: post.isFollowing
+                })
+                    .then(response => {
+                        if (response.data.code !== 200) {
+                            // 如果请求失败，恢复状态
+                            post.isFollowing = !post.isFollowing;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('关注操作失败:', error);
+                        // 如果请求失败，恢复状态
+                        post.isFollowing = !post.isFollowing;
+                    });
             }
         },
 
@@ -863,5 +1085,102 @@
     .favorite-btn {
         position: relative;
         z-index: 2;
+    }
+
+    .carousel-controls {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 8px;
+    }
+
+    .carousel-arrow {
+        background: rgba(0, 0, 0, 0.3) !important;
+        color: white !important;
+    }
+
+    /* 轮播图标题样式 */
+    .carousel-container {
+        position: relative;
+    }
+
+    .carousel-title-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+        padding: 20px 16px 10px;
+        z-index: 1;
+        /* 确保标题在轮播图上方 */
+    }
+
+    /* 悬停时显示指示点
+    .carousel-container .v-carousel__controls {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    } */
+
+    .carousel-container:hover .v-carousel__controls {
+        opacity: 1;
+    }
+
+    .post-detail-content {
+        font-size: 16px;
+        line-height: 1.6;
+        margin: 16px 0;
+    }
+
+    .post-detail-content p {
+        white-space: pre-wrap;
+        /* 保留换行符 */
+        margin-bottom: 16px;
+    }
+
+    /* 添加图片网格样式 */
+    .post-images img {
+        object-fit: cover;
+        border-radius: 4px;
+    }
+
+    .post-detail-cover {
+        object-fit: cover;
+    }
+
+    .post-card {
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .post-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 帖子详情样式 - 移除内容预览的高度限制 */
+    .post-detail .content-preview {
+        max-height: none !important;
+        /* 覆盖原始限制 */
+        overflow: visible !important;
+    }
+
+    .post-detail-content {
+        font-size: 16px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        /* 保留换行符 */
+    }
+
+    /* 确保对话框中的内容不会被截断 */
+    .post-detail .v-card__text {
+        overflow: visible;
+    }
+
+    .follow-btn {
+        min-width: 70px;
+        text-transform: none;
     }
 </style>

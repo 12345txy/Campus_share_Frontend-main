@@ -34,7 +34,7 @@
         <v-bottom-navigation fixed style="background:none;">
           <v-card class="d-flex flex-row-reverse justify-center mb-8" style="background:none;" flat hover light>
             <v-btn class="mt-7 mb-7" text small depressed fab plain block
-              onclick="window.open('https://github.com/112292454/DSlab.git')"> <v-icon>
+              onclick="window.open('https://github.com/12345txy/Campus_share_Frontend-main.git')"> <v-icon>
                 mdi-github
               </v-icon>
             </v-btn>
@@ -62,14 +62,15 @@
       return {
         drawer: false,
         menuItems: [
-          { title: '游学推荐', icon: 'mdi-map', iconColor: 'success', to: '/TravelRecommend' },
-          { title: '路线规划', icon: 'mdi-navigation-variant', iconColor: 'purple', to: '/RoutePlan' },
-          { title: '场所查询', icon: 'mdi-magnify', iconColor: 'blue', to: '/PlaceSearch' },
-          { title: '游学日记', icon: 'mdi-book', iconColor: 'brown', to: '/DiaryManage' },
-          { title: '美食推荐', icon: 'mdi-pasta', iconColor: 'deep-orange', to: '/FoodRecommend' },
+          // { title: '游学推荐', icon: 'mdi-map', iconColor: 'success', to: '/TravelRecommend' },
+          // { title: '路线规划', icon: 'mdi-navigation-variant', iconColor: 'purple', to: '/RoutePlan' },
+          // { title: '场所查询', icon: 'mdi-magnify', iconColor: 'blue', to: '/PlaceSearch' },
+          // { title: '游学日记', icon: 'mdi-book', iconColor: 'brown', to: '/DiaryManage' },
+          // { title: '美食推荐', icon: 'mdi-pasta', iconColor: 'deep-orange', to: '/FoodRecommend' },
+          { title: '首页', icon: 'mdi-vuejs', iconColor: 'green', to: '/FrontPage' },
           { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/UserProfile' },
           { title: '发布帖子', icon: 'mdi-pencil', iconColor: 'blue', to: '/CreatePost' },
-          { title: '首页', icon: 'mdi-vuejs', iconColor: 'green', to: '/FrontPage' },
+        
         ],
         currentItemTitle: '欢迎来到游学系统', // 默认标题
       };
