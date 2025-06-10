@@ -115,30 +115,41 @@
         methods: {
 
             login: function () {
-                const self = this;  // 保存 this 引用
+                const self = this;
                 this.$axios({
                     method: 'post',
-                    url: '/auth/login', // 修改为你的接口地址
+                    url: '/auth/login',
                     data: {
-                        username: this.username1, // 修改为接口需要的参数名
-                        password: this.passwd1, // 修改为接口需要的参数名
+                        username: this.username1,
+                        password: this.passwd1,
                     },
                     headers: {
                         'Content-Type': 'application/json',
                     }
                 }).then(res => {
-                    console.log(res.data);
+                    console.log('登录响应:', res.data);
                     if (res.data.code === 200) {
-                        // 保存token
+                        // 保存完整的用户信息 - 添加用户ID
+                        const userData = {
+                            id: res.data.data.userId,  // 添加用户ID
+                            username: res.data.data.username,
+                            isAdmin: res.data.data.isAdmin
+                        };
+                        
+                        console.log('保存的用户信息:', userData);
+                        localStorage.setItem('user', JSON.stringify(userData));
                         localStorage.setItem('token', res.data.data.token);
-                        // 可选：打印token进行调试
-                        console.log('保存的token:', res.data.data.token);
-                        window.alert('登录成功');
-                        self.$router.push('/TravelRecommend');
+
+                        // 路由跳转
+                        const isAdmin = res.data.data.isAdmin === '1';
+                        const targetPath = isAdmin ? '/admin' : '/FrontPage';
+                        if (this.$route.path !== targetPath) {
+                            this.$router.push(targetPath).catch(() => {});
+                        }
                     } else {
                         window.alert('账号或密码错误，请重试!如未注册，请先注册！')
                     }
-                }).catch(error => {  // 使用箭头函数
+                }).catch(error => {
                     console.log(error);
                     self.loading = false;
                 });

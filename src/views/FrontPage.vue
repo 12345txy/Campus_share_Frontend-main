@@ -5,29 +5,32 @@
             <v-tabs v-model="selectedCategory" background-color="transparent" color="indigo"
                 slider-color="indigo accent-4" centered show-arrows>
                 <v-tab v-for="category in categories" :key="category" :value="category"
-                    class="font-weight-bold text-body-1">
+                    class="font-weight-bold text-body-1" @click="fetchPosts(category)">
                     {{ category }}
                 </v-tab>
             </v-tabs>
-
             <!-- 搜索部分 -->
-            <v-container d-flex class="pb-0">
+            <v-container d-flex class="pb-0" >
                 <v-btn rounded class="mr-2 font-weight-black" color="indigo" dark @click="toggleSearchMode">
                     <v-icon left>
                         {{ searchIcon }}
                     </v-icon>
                     {{ searchText }}
                 </v-btn>
-                <div style="position: relative; width: 80%;">
+                <div style="position: relative; width: 80%; display: flex;">
                     <v-menu offset-y v-model="displayResults" nudge-top="20" :close-on-content-click="false">
                         <template v-slot:activator="{ on, attrs }">
-                            <v-text-field v-model="searchContent" :label="searchPlaceholder" append-icon="mdi-magnify"
-                                @input="search" v-bind="attrs" clearable v-on="on" outlined dense style="width: 100%;">
+                            <v-text-field v-model="searchContent" :label="searchPlaceholder" 
+                            append-icon="mdi-magnify"  @click:append="onSearchClick" v-bind="attrs" clearable v-on="on" outlined dense style="width: 100%;" ref="searchIcon">
+                                <!-- 添加清除按钮点击事件 -->
+                                <template #append-inner>
+                                    <v-icon v-if="searchContent" @click="clearSearch">mdi-close</v-icon>
+                                </template>
                             </v-text-field>
                         </template>
                         <v-list>
                             <v-list-item @click="selectPost(post)" style="width: 100%;" v-for="post in searchResults"
-                                :key="post.id" dense>
+                                         :key="post.id" dense>
                                 <v-icon class="mr-3">{{ getPostIcon(post) }}</v-icon>
                                 <v-list-item-title class="font-weight-bold text--secondary mr-4">
                                     <v-row align="center" justify="space-between">
@@ -45,13 +48,25 @@
                                     </v-row>
                                 </v-list-item-title>
                                 <v-list-item-subtitle
-                                    v-html="highlightSearchQuery(post.content)"></v-list-item-subtitle>
+                                        v-html="highlightSearchQuery(post.content)"></v-list-item-subtitle>
                             </v-list-item>
                         </v-list>
                     </v-menu>
+                    <!-- 修改搜索控制按钮，使其与搜索框对齐 -->
+                    <v-btn 
+                        @click="toggleSearchStatus" 
+                        class="ml-2 " 
+                        outlined 
+                        dense
+                        :color="isSearching ? 'indigo' : 'grey'"
+                        :style="{ height: '40px' }">
+                        <v-icon left small>
+                            {{ isSearching ? 'mdi-loading mdi-spin' : 'mdi-magnify' }}
+                        </v-icon>
+                        {{ isSearching ? '搜索中' : '开始搜索' }}
+                    </v-btn>
                 </div>
             </v-container>
-
             <!-- 标签筛选 -->
             <v-container class="pt-0 pb-2">
                 <div class="d-flex justify-center">
@@ -79,9 +94,8 @@
                             <v-card class="mx-auto" max-width="400" hover @click="openPostDetail(post)">
                                 <!-- 轮播图或单图容器 -->
                                 <div class="carousel-container" style="position: relative;">
-                                    <!-- 多图轮播 -->
                                     <template v-if="post.images && post.images.length > 1">
-                                        <v-carousel height="200" show-arrows="true" hide-delimiter-background
+                                        <v-carousel height="200" :show-arrows="true" hide-delimiter-background
                                             :hide-delimiters="false" show-arrows-on-hover>
                                             <v-carousel-item v-for="(image, i) in post.images" :key="i" :src="image"
                                                 cover></v-carousel-item>
@@ -100,8 +114,8 @@
                                 </div>
 
                                 <v-card-text class="content-preview">
-                                    {{ post.content ? post.content.substring(0, 50) + (post.content.length > 50 ? '...'
-                                    : '') : '暂无内容' }}
+                                    {{ stripHtmlTags(post.content).slice(0, 50) + (stripHtmlTags(post.content).length > 50 ? '...' : '') }}
+
                                 </v-card-text>
 
                                 <!-- 标签展示 -->
@@ -116,7 +130,7 @@
                                 <v-card-text class="text--primary py-2">
                                     <div class="d-flex align-center">
                                         <v-avatar size="30">
-                                            <img :src="post.authorAvatar" alt="avatar" @error="handleImageError">
+                                            <img :src="post.authorAvatar" alt="avatar" @error="handleImageError" @click="goToUserProfile(post.userId)">
                                         </v-avatar>
                                         <span class="ml-1 caption">{{ post.authorName }}</span>
                                         <v-btn outlined x-small dark :color="post.isFollowing ? 'grey' : 'indigo'"
@@ -134,7 +148,7 @@
                                                 <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' : 'mdi-thumb-up-outline'
                                                     }}</v-icon>
                                             </v-btn>
-                                            <span class="mr-2 caption like-count-text"
+                                            <span class="mr-1 caption like-count-text"
                                                 :class="{'primary--text': post.isLiked}">{{ post.likes }}</span>
 
                                             <!-- 收藏按钮 -->
@@ -144,14 +158,19 @@
                                                 <v-icon small>{{ post.isFavorite ? 'mdi-heart' : 'mdi-heart-outline'
                                                     }}</v-icon>
                                             </v-btn>
-                                            <span class="mr-2 caption favorite-count-text"
-                                                :class="{'red--text': post.isFavorite}">{{ post.favorites || 0 }}</span>
+                                            <span class="mr-1 caption favorite-count-text"
+                                                :class="{'red--text': post.isFavorite}">{{ post.likeCount || 0 }}</span>
 
                                             <!-- 评论按钮 -->
                                             <v-btn icon x-small class="mr-1" @click.stop="openComments(post, $event)">
                                                 <v-icon color="blue" small>mdi-comment-outline</v-icon>
                                             </v-btn>
-                                            <span class="caption">{{ post.comments || 0 }}</span>
+                                            <span class="mr-1 caption">{{ post.comments || 0 }}</span>
+                                             <!-- 查看数 -->
+                                            <v-btn icon x-small class="mr-1" disabled>
+                                                <v-icon color="grey" small>mdi-eye</v-icon>
+                                            </v-btn>
+                                            <span class="mr-1 caption">{{ post.views || 0 }}</span>
                                         </div>
                                     </div>
                                 </v-card-text>
@@ -182,48 +201,7 @@
                     <v-card-text class="comments-container">
                         <v-list two-line>
                             <template v-for="(comment, index) in comments">
-                                <v-list-item :key="comment.id || 'comment-' + index">
-                                    <v-list-item-avatar>
-                                        <v-img :src="comment.authorAvatar"></v-img>
-                                    </v-list-item-avatar>
-                                    <v-list-item-content>
-                                        <v-list-item-title>{{ comment.authorName }}</v-list-item-title>
-                                        <v-list-item-subtitle>{{ comment.content }}</v-list-item-subtitle>
-                                        <div class="caption grey--text text--darken-1 mt-1">
-                                            {{ comment.createTime || '刚刚' }}
-                                        </div>
-                                    </v-list-item-content>
-                                    <v-list-item-action>
-                                        <v-btn x-small text color="primary" @click="prepareReply(comment)">
-                                            回复
-                                        </v-btn>
-                                    </v-list-item-action>
-                                </v-list-item>
-
-                                <!-- 嵌套回复 -->
-                                <div v-if="comment.replies && comment.replies.length" :key="`replies-${comment.id}`"
-                                    class="ml-12">
-                                    <v-list-item v-for="reply in comment.replies" :key="reply.id" dense>
-                                        <v-list-item-avatar size="24">
-                                            <v-img :src="reply.authorAvatar"></v-img>
-                                        </v-list-item-avatar>
-                                        <v-list-item-content>
-                                            <v-list-item-title class="subtitle-2">
-                                                {{ reply.authorName }}
-                                                <span class="caption grey--text">回复</span>
-                                                <span class="caption primary--text">{{ reply.replyTo }}</span>
-                                            </v-list-item-title>
-                                            <v-list-item-subtitle>{{ reply.content }}</v-list-item-subtitle>
-                                            <div class="caption grey--text text--darken-1 mt-1">
-                                                {{ reply.createTime }}
-                                                <v-btn x-small text color="primary" class="ml-2"
-                                                    @click="prepareReply(reply, comment.id)">
-                                                    回复
-                                                </v-btn>
-                                            </div>
-                                        </v-list-item-content>
-                                    </v-list-item>
-                                </div>
+                                <CommentItem :comment="comment" :toggleShowReplies="toggleShowReplies" :prepareReply="prepareReply" :toggleCommentLike="toggleCommentLike" :key="comment.id || 'comment-' + index" />
                             </template>
 
                             <v-list-item v-if="comments.length === 0">
@@ -234,8 +212,10 @@
                         </v-list>
                     </v-card-text>
                     <v-divider></v-divider>
+                    
                     <v-card-actions>
-                        <v-text-field v-model="newComment" :label="replyingTo ? `回复 ${replyingTo.authorName}` : '添加评论'"
+                        <v-text-field v-model="newComment" 
+                            :label="replyingTo ? `回复 ${replyingTo.nickname || replyingTo.authorName || '匿名用户'}` : '添加评论'"
                             outlined dense :append-icon="replyingTo ? 'mdi-close' : 'mdi-send'"
                             :append-icon-cb="replyingTo ? cancelReply : null"
                             @click:append="replyingTo ? cancelReply() : addComment()" @keyup.enter="addComment">
@@ -251,6 +231,18 @@
                     </v-card-actions>
                 </v-card>
             </v-dialog>
+            
+            <v-dialog v-model="announcementDialog" max-width="600">
+                <v-card>
+                    <v-card-title class="headline">{{ newAnnouncement.title }}</v-card-title>
+                    <v-card-text v-html="newAnnouncement.content"></v-card-text>
+                    <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="primary" text @click="announcementDialog = false">关闭</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
 
             <!-- 帖子详情对话框 -->
             <v-dialog v-model="postDetailDialog" max-width="700">
@@ -261,7 +253,7 @@
                         <v-card-title class="pb-1">
                             <v-row align="center" class="mx-0">
                                 <v-avatar size="40">
-                                    <img :src="selectedPost.authorAvatar" alt="avatar" @error="handleImageError">
+                                    <img :src="selectedPost.authorAvatar" alt="avatar" @error="handleImageError" @click="goToUserProfile(post.userId)">
                                 </v-avatar>
                                 <div class="ml-3">
                                     <div class="subtitle-1 font-weight-medium">{{ selectedPost.authorName }}</div>
@@ -321,7 +313,7 @@
                                     {{ selectedPost.isLiked ? 'mdi-thumb-up' : 'mdi-thumb-up-outline' }}
                                 </v-icon>
                                 <span class="ml-1 like-count-text">
-                                    {{ selectedPost.likeCount || 0 }}
+                                    {{ selectedPost.likes || 0 }}
                                 </span>
                             </v-btn>
                             <!-- 收藏按钮 -->
@@ -330,7 +322,7 @@
                                     {{ selectedPost.isFavorite ? 'mdi-heart' : 'mdi-heart-outline' }}
                                 </v-icon>
                                 <span class="ml-1 favorite-count-text">
-                                    {{ selectedPost.favorites || 0 }}
+                                    {{ selectedPost.likeCount || 0 }}
                                 </span>
                             </v-btn>
 
@@ -351,15 +343,58 @@
                     </v-card>
                 </v-card>
             </v-dialog>
+            
         </v-container>
-    </v-app>
+        <v-container pt-0>
+    
+    <!-- 帖子卡片展示 -->
+    <v-container>
+        <v-row>
+            <v-col v-for="post in posts" :key="post.id" cols="12" sm="6" md="4">
+                <!-- 帖子卡片内容... -->
+            </v-col>
+        </v-row>
+    </v-container>
+
+    
+</v-container>
+ <!-- 分页组件 -->
+ <v-pagination
+        v-model="currentPage"
+        :length="totalPages"
+        @input="onPageChange"></v-pagination>
+       </v-app>
+    
 </template>
 
 <script>
+import axios from 'axios';
+import * as Stomp from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import Vue from 'vue';
+    // 根据帖子类别返回不同图标
+    const categoryIcons = {
+                        '旅游': 'mdi-airplane',
+                        '美食': 'mdi-food',
+                        '学习': 'mdi-book-open-page-variant',
+                        '校园': 'mdi-school',
+                        '生活': 'mdi-home',
+                        '情感': 'mdi-heart',
+                        '科技': 'mdi-laptop',
+                        '娱乐': 'mdi-movie',
+                        '体育': 'mdi-basketball'
+                    };
     export default {
         data: () => ({
+            announcementDialog: false,
+            newAnnouncement: {
+            title: '',
+            content: ''
+            },
+            stompClient: null,
+
             // 搜索相关
-            searchMode: 0, // 0: 内容搜索, 1: 用户搜索, 2: 标签搜索
+            searchMode: 0, // 0: 内容搜索, 1: 用户搜索
             searchContent: '',
             searchResults: [],
             displayResults: false,
@@ -370,14 +405,16 @@
 
             // 标签相关
             selectedTags: [],
-            popularTags: ['旅行', '美食', '校园', '学习', '电影', '音乐', '游戏', '读书', '摄影'],
+            popularTags: [],
 
             // 排序方式
             sortOption: 0, // 0: 最新, 1: 热门, 2: 推荐
 
             // 帖子数据
             posts: [],
-
+            currentPage: 1,
+            pageSize: 6,
+            totalPages: 1,
             // 评论相关
             commentDialog: false,
             selectedPost: null,
@@ -385,7 +422,7 @@
             newComment: '',
             replyingTo: null,  // 当前回复的评论对象
             replyParentId: null, // 如果是回复嵌套评论，记录父评论ID
-
+            token: localStorage.getItem('token') || '' ,
             // 用户信息
             currentUser: {
                 id: 1,
@@ -393,22 +430,26 @@
             },
 
             postDetailDialog: false,  // 控制帖子详情对话框的显示
+            isSearching: false // 新增全局变量，标记是否处于搜索状态
         }),
 
         computed: {
+            paginatedPosts() {
+            const startIndex = (this.currentPage - 1) * this.pageSize;
+            const endIndex = startIndex + this.pageSize;
+            return this.posts.slice(startIndex, endIndex);
+        },
             searchIcon() {
                 switch (this.searchMode) {
-                    case 0: return 'mdi-magnify';
+                    case 0: return 'mdi-file-search';
                     case 1: return 'mdi-account-search';
-                    case 2: return 'mdi-tag-search';
                     default: return 'mdi-magnify';
                 }
             },
             searchText() {
                 switch (this.searchMode) {
-                    case 0: return '内容搜索';
-                    case 1: return '用户搜索';
-                    case 2: return '标签搜索';
+                    case 0: return '搜内容';
+                    case 1: return '搜用户';
                     default: return '搜索';
                 }
             },
@@ -416,71 +457,120 @@
                 switch (this.searchMode) {
                     case 0: return '搜索帖子标题和内容';
                     case 1: return '搜索用户名';
-                    case 2: return '搜索标签';
                     default: return '搜索';
                 }
             }
         },
-
+        mounted() {
+            this.connectAnnouncementWebSocket();
+        },
         methods: {
+            connectAnnouncementWebSocket() {
+                const socket = new SockJS('http://localhost:8080/ws');
+                const stompClient = Stomp.Stomp.over(socket);
+
+                stompClient.connect({}, frame => {
+                    console.log('✅ WebSocket 连接成功:', frame);
+                    stompClient.subscribe('/topic/announcements', message => {
+                    const data = JSON.parse(message.body);
+                    this.newAnnouncement = {
+                        title: data.title,
+                        content: data.content
+                    };
+                    this.announcementDialog = true;
+                    });
+                }, error => {
+                    console.error('❌ WebSocket 连接失败:', error);
+                });
+                this.stompClient = stompClient;
+            },
+            goToUserProfile(userId) {
+                // 修改路由跳转，传递 userId 参数
+                this.$router.push({ name: 'UserProfile', params: { userId: userId } });
+            },
+
             toggleSearchMode() {
-                this.searchMode = (this.searchMode + 1) % 3;
+                this.searchMode = (this.searchMode + 1) % 2;
                 this.searchContent = '';
                 this.searchResults = [];
             },
 
-            search() {
-                if (!this.searchContent.trim()) {
-                    this.searchResults = [];
-                    return;
-                }
-
-                // 这里向后端发送请求进行搜索
-                this.$axios.post('/api/posts/search', {
-                    mode: this.searchMode,
-                    query: this.searchContent,
-                    category: this.selectedCategory !== '全部' ? this.selectedCategory : '',
-                    tags: this.selectedTags
-                })
-                    .then(response => {
-                        if (response.data.code === 200) {
-                            this.searchResults = response.data.data;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('搜索失败:', error);
-                        // 模拟搜索结果
-                        this.searchResults = this.posts.filter(post => {
-                            if (this.searchMode === 0) {
-                                // 内容搜索
-                                return post.title.includes(this.searchContent) ||
-                                    post.content.includes(this.searchContent);
-                            } else if (this.searchMode === 1) {
-                                // 用户搜索
-                                return post.authorName.includes(this.searchContent);
-                            } else {
-                                // 标签搜索
-                                return post.tags && post.tags.some(tag => tag.includes(this.searchContent));
-                            }
-                        });
-                    });
+            // 新功能
+            stripHtmlTags(text) {
+                return text ? text.replace(/<[^>]+>/g, '') : '暂无内容';
             },
-
+          /*  
+            search() {
+    if (!this.searchContent.trim()) {
+        this.searchResults = [];
+        return;
+    }
+    if (this.searchMode === 1) { // 用户搜索模式
+        // 先获取前6条数据
+        this.$axios.get(`/api/posts/user/${this.searchContent}?current=1&size=6`)
+           .then(response => {
+                if (response.data.code === 200) {
+                    this.tempSearchResults = response.data.data.records; // 暂存前6条结果
+                    this.searchResults = this.tempSearchResults; // 先展示这6条
+                }
+            })
+           .catch(error => {
+                console.error('搜索失败:', error);
+                // 模拟搜索结果
+                this.tempSearchResults = this.posts.filter(post => {
+                    return post.authorName.includes(this.searchContent);
+                }).slice(0, 6);
+                this.searchResults = this.tempSearchResults;
+            });
+        // 点击放大镜时获取全部结果
+        this.$refs.searchIcon.addEventListener('click', () => {
+            this.$axios.get(`/api/posts/user/${this.searchContent}`)
+               .then(response => {
+                    if (response.data.code === 200) {
+                        this.searchResults = response.data.data.records; // 替换为全部结果
+                    }
+                })
+               .catch(error => {
+                    console.error('搜索失败:', error);
+                    this.searchResults = this.posts.filter(post => {
+                        return post.authorName.includes(this.searchContent);
+                    });
+                });
+        });
+    } else {
+        // 其他搜索模式（内容搜索等）
+        this.$axios.post('/api/posts/search', {
+            mode: this.searchMode,
+            query: this.searchContent,
+            category: this.selectedCategory!== '全部'? this.selectedCategory : '',
+            tags: this.selectedTags
+        })
+           .then(response => {
+                if (response.data.code === 200) {
+                    this.searchResults = response.data.data;
+                }
+            })
+           .catch(error => {
+                console.error('搜索失败:', error);
+                if (this.searchMode === 0) {
+                    // 内容搜索
+                    this.searchResults = this.posts.filter(post => {
+                        return post.title.includes(this.searchContent) ||
+                            post.content.includes(this.searchContent);
+                    });
+                } else {
+                    // 标签搜索（虽已去除标签搜索，但保留逻辑完整性）
+                    this.searchResults = this.posts.filter(post => {
+                        return post.tags && post.tags.some(tag => tag.includes(this.searchContent));
+                    });
+                }
+            });
+    }
+},*/
             getPostIcon(post) {
-                // 根据帖子类别返回不同图标
-                const categoryIcons = {
-                    '旅游': 'mdi-airplane',
-                    '美食': 'mdi-food',
-                    '学习': 'mdi-book-open-page-variant',
-                    '校园': 'mdi-school',
-                    '生活': 'mdi-home',
-                    '情感': 'mdi-heart',
-                    '科技': 'mdi-laptop',
-                    '娱乐': 'mdi-movie',
-                    '体育': 'mdi-basketball'
-                };
+                
 
-                return categoryIcons[post.category] || 'mdi-text-box';
+                return categoryIcons[post.category-1] || 'mdi-text-box';
             },
 
             highlightSearchQuery(text) {
@@ -498,34 +588,113 @@
                 } else {
                     this.selectedTags.splice(index, 1);
                 }
-                this.fetchPosts();
+               this.fetchPosts();
             },
 
             selectPost(post) {
                 // 跳转到帖子详情页
                 this.$router.push(`/posts/${post.id}`);
             },
+            onPageChange(newPage) {
+                this.currentPage = newPage;
+                this.fetchPosts(); // 重新获取对应页码的数据
+            },
+            fetchPosts(category) {
 
-            fetchPosts() {
+                if(category!=null){
+                this.selectedCategory=category;}
+                const categoryNames = Object.keys(categoryIcons);
+                console.log('点击页数为:', this.currentPage);
+                // 从本地存储中获取 token
+                const token = localStorage.getItem('token');
+                
                 // 从后端获取帖子列表
-                this.$axios.post('/api/posts', {
-                    category: this.selectedCategory !== '全部' ? this.selectedCategory : '',
-                    tags: this.selectedTags,
-                    sortBy: ['newest', 'popular', 'recommended'][this.sortOption]
-                })
-                    .then(response => {
-                        if (response.data.code === 200) {
-                            // 确保初始化所有状态字段
-                            this.posts = response.data.data.map(post => {
-                                return {
-                                    ...post,
-                                    isFavorite: post.isFavorite || false,
-                                    isLiked: post.isLiked || false,
-                                    isFollowing: post.isFollowing || false
-                                };
-                            });
-                        }
-                    })
+                let params;
+                let url;
+            if (this.isSearching) {
+                // 搜索状态下使用搜索接口
+                if(this.searchMode==1){
+                    url = `/posts/user/${-1}`;
+                    params = {
+                        sortOption:this.sortOption,
+                        userName:this.searchContent,
+                        current: this.currentPage,
+                        size: this.pageSize,
+                        tags: this.selectedTags.map(tag => encodeURIComponent(tag)).join(',')  // 对标签进行编码
+                    };
+                }
+                else if(this.searchMode==0){
+                    // 正常状态下使用原接口
+                    url = `/posts/search`;
+                    params = {
+                        keyword:this.searchContent,
+                        current: this.currentPage,
+                        size: this.pageSize,
+                        sortOption:this.sortOption,
+                        tags:this.selectedTags.map(tag => encodeURIComponent(tag)).join(',') // 对标签进行编码
+                    };
+                }
+            }
+            else{
+                url = '/posts';
+                params = {
+                    sortOption:this.sortOption,
+                    current: this.currentPage,
+                    size: this.pageSize,
+                    tags:this.selectedTags.map(tag => encodeURIComponent(tag)).join(',')  // 对标签进行编码
+                };
+                console.log('选择标签:', this.selectedTags.map(tag => encodeURIComponent(tag)).join(',') ); // 对标签进行编码
+                if (this.selectedCategory !== '全部') {
+                    // 找到 selectedCategory 在 categoryNames 中的索引
+                    const categoryIndex = categoryNames.indexOf(this.selectedCategory);
+                    if (categoryIndex !== -1) {
+                        const categoryId = categoryIndex + 1;
+                        url = `/posts/category/${categoryId}`;
+                        // 移除 category 参数，因为后端接口通过路径参数接收 categoryId
+                        console.log('选择种类:',  categoryId);
+                    }
+                } 
+            }
+
+    // 从后端获取帖子列表
+    this.$axios.get(url, {
+        params,
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    })
+   
+      .then(response => {
+        
+            if (response.data.code === 200) {
+                // 确保初始化所有状态字段
+                this.posts = response.data.data.list.map(post => {
+                    const categoryName = categoryNames[post.categoryId - 1];
+                    return {
+                        id: post.id,
+                                title: post.title,
+                                userId:post.userId,
+                                content: post.content,
+                                coverImage: post.coverImage,
+                                images: post.images,
+                                authorName: post.userNickname,
+                                authorAvatar: post.userAvatarUrl,
+                                category: categoryName,
+                                tags: post.tags,
+                                likes: post.likeCount,
+                                likeCount: post.favoriteCount,
+                                comments:post.commentCount,
+                                views:post.viewCount,
+                                isFavorite: post.favorite,
+                                isLiked: post.liked,
+
+                                createTime: post.createTime,
+                                isFollowing:post.following
+                    };
+                });
+                this.totalPages = response.data.data.pages;
+            }
+        })
                     .catch(error => {
                         console.error('获取帖子列表失败:', error);
                         // 模拟数据
@@ -543,8 +712,10 @@
                                 likes: 42,
                                 likeCount: 53,
                                 comments: 8,
+                                views:1,
                                 isFavorite: false,
                                 isLiked: false,
+
                                 createTime: '2023-12-01 15:30',
                                 isFollowing: false
                             },
@@ -560,6 +731,7 @@
                                 likes: 36,
                                 likeCount: 48,
                                 comments: 5,
+                                views:1,
                                 isFavorite: true,
                                 isLiked: false,
                                 createTime: '2023-11-28 20:15',
@@ -576,6 +748,7 @@
                                 tags: ['旅行', '北京', '故宫', '历史'],
                                 likes: 128,
                                 likeCount: 86,
+                                views:1,
                                 comments: 42,
                                 isFavorite: true,
                                 isLiked: false,
@@ -594,6 +767,7 @@
                                 likes: 96,
                                 likeCount: 120,
                                 comments: 35,
+                                views:1,
                                 isFavorite: false,
                                 isLiked: true,
                                 createTime: '2023-11-22 18:30',
@@ -609,6 +783,7 @@
                                 category: '校园',
                                 tags: ['旅行', '武汉', '樱花', '校园'],
                                 likes: 156,
+                                views:1,
                                 likeCount: 187,
                                 comments: 48,
                                 isFavorite: false,
@@ -626,6 +801,7 @@
                                 category: '学习',
                                 tags: ['学习', '复习', '经验分享'],
                                 likes: 108,
+                                views:1,
                                 likeCount: 132,
                                 comments: 27,
                                 isFavorite: true,
@@ -636,154 +812,229 @@
                         ];
                     });
             },
+            toggleSearchStatus() {
+            this.isSearching =!this.isSearching;
+            this.fetchPosts(this.selectedCategory);
+        },
+            onSearchClick() {
+            if (this.searchContent.trim()) {
+                this.isSearching = true;
+                this.fetchPosts(this.selectedCategory);
+            }
+        },
+        clearSearch() {
+            this.searchContent = '';
+            this.isSearching = false;
+            this.fetchPosts(this.selectedCategory);
+        },
+            openPostDetail(post) {
+            // 发送请求获取帖子详情
+            const config = {
+            headers: {
+                // 在请求头中添加 token
+                Authorization: `Bearer ${this.token}` 
+            }
+        };
+            axios.get(`/posts/${post.id}`,config)
+               .then(response => {
+                    const postDetail = response.data.data;
+                    // 更新当前帖子的查看数
 
-            toggleLike(post, event) {
-                event.stopPropagation(); // 阻止事件冒泡
-                // 切换状态
-                post.isLiked = !post.isLiked;
-                console.log("post.isLiked", post.isLiked);
-                post.likeCount = post.isLiked ? (post.likeCount || 0) + 1 : (post.likeCount || 1) - 1;
-                post.likes = post.isLiked ? (post.likes || 0) + 1 : (post.likes || 1) - 1;
-
-                // 恢复按钮状态
-                const btn = event.currentTarget; // 获取触发事件的按钮
-                setTimeout(() => {
-                    btn.classList.remove('clicked');
-                }, 300);
-
-                // 显示简单的提示消息
-                this.$nextTick(() => {
-                    if (post.isLiked) {
-                        this.$toast ? this.$toast.success('点赞成功') : console.log('点赞成功');
-                    }
-                });
-
-                // 向后端发送点赞请求
-                this.$axios.post(`/api/posts/${post.id}/like`, {
-                    like: post.isLiked
+                    
+                    this.selectedPost = {
+                    ...post,
+                    authorAvatar: post.authorAvatar || 'https://cdn.vuetifyjs.com/images/john.jpg'
+                };
+                post.views = postDetail.viewCount;
+                    // 打开帖子详情对话框
+                    this.selectedPost = post;
+                    this.postDetailDialog = true;
+                    
+                
                 })
-                    .then(response => {
-                        if (response.data.code !== 200) {
-                            // 如果请求失败，恢复状态
-                            post.isLiked = !post.isLiked;
-                            post.likeCount = post.isLiked ? post.likeCount + 1 : post.likeCount - 1;
-                            post.likes = post.isLiked ? post.likes + 1 : post.likes - 1;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('点赞操作失败:', error);
-                        // 如果请求失败，恢复状态
-                        post.isLiked = !post.isLiked;
-                        post.likeCount = post.isLiked ? post.likeCount + 1 : post.likeCount - 1;
-                        post.likes = post.isLiked ? post.likes + 1 : post.likes - 1;
-                    });
-            },
-
-            toggleFavorite(post, event) {
-                event.stopPropagation(); // 阻止事件冒泡
-                // 切换状态
-                post.isFavorite = !post.isFavorite;
-                post.favorites = post.isFavorite ? (post.favorites || 0) + 1 : (post.favorites || 1) - 1;
-
-                // 恢复按钮状态
-                const btn = event.currentTarget; // 获取触发事件的按钮
-                setTimeout(() => {
-                    btn.classList.remove('clicked');
-                }, 300);
-
-                // 显示简单的提示消息
-                this.$nextTick(() => {
-                    if (post.isFavorite) {
-                        this.$toast ? this.$toast.success('收藏成功') : console.log('收藏成功');
-                    } else {
-                        this.$toast ? this.$toast.info('已取消收藏') : console.log('已取消收藏');
-                    }
+               .catch(error => {
+                    console.error('获取帖子详情失败:', error);
                 });
+        },
+            async toggleLike(post, event) {
+    event.stopPropagation(); // 阻止事件冒泡
+    try {
+        if (post.isLiked) {
+            // 取消点赞
+            await this.$axios.delete(`/post-likes/${post.id}`);
+        } else {
+            // 添加点赞
+            await this.$axios.post(`/post-likes/${post.id}`, {
+                like: true
+            });
+        }
+        // 切换点赞状态
+        post.isLiked = !post.isLiked;
 
-                // 向后端发送收藏请求
-                this.$axios.post(`/api/posts/${post.id}/favorite`, {
-                    favorite: post.isFavorite
-                })
-                    .then(response => {
-                        if (response.data.code !== 200) {
-                            // 如果请求失败，恢复状态
-                            post.isFavorite = !post.isFavorite;
-                            post.favorites = post.isFavorite ? post.favorites + 1 : post.favorites - 1;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('收藏操作失败:', error);
-                        // 如果请求失败，恢复状态
-                        post.isFavorite = !post.isFavorite;
-                        post.favorites = post.isFavorite ? post.favorites + 1 : post.favorites - 1;
-                    });
-            },
+        const config = {
+            headers: {
+                // 在请求头中添加 token
+                Authorization: `Bearer ${this.token}` 
+            }
+        };
 
-            openComments(post, event) {
-                if (event) {
-                    event.stopPropagation();
-                    event.preventDefault();
-                    setTimeout(() => {
-                        this.selectedPost = post;
-                        this.commentDialog = true;
-                        this.newComment = '';
-                        this.replyingTo = null;
-                        this.replyParentId = null;
+        // 获取更新后的点赞数
+        const response = await this.$axios.get(`/post-likes/count/${post.id}`, config);
+        const newLikeCount = response.data.data;
 
-                        // 获取评论数据
-                        this.$axios.get(`/api/posts/${post.id}/comments`)
-                            .then(response => {
-                                if (response.data.code === 200) {
-                                    this.comments = response.data.data.map(comment => {
-                                        return {
-                                            ...comment,
-                                            replies: comment.replies || []
-                                        };
-                                    });
-                                }
-                            })
-                            .catch(error => {
-                                console.error('获取评论失败:', error);
-                                // 模拟评论数据
-                                this.comments = [
-                                    {
-                                        id: 1,
-                                        content: '这篇帖子很不错，我很喜欢！',
-                                        authorName: '评论用户1',
-                                        authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/1.jpg',
-                                        createTime: '2023-11-20 15:30',
-                                        replies: [
-                                            {
-                                                id: 3,
-                                                content: '谢谢你的评论！',
-                                                authorName: '楼主',
-                                                authorAvatar: post.authorAvatar,
-                                                createTime: '2023-11-20 16:10',
-                                                replyTo: '评论用户1'
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        id: 2,
-                                        content: '内容很有深度，值得推荐！',
-                                        authorName: '评论用户2',
-                                        authorAvatar: 'https://cdn.vuetifyjs.com/images/lists/2.jpg',
-                                        createTime: '2023-11-20 14:45',
-                                        replies: []
-                                    }
-                                ];
-                            });
-                    }, 10);
-                    return;
+        // 更新帖子的点赞数
+        post.likes = newLikeCount;
+   
+
+        // 恢复按钮状态
+        const btn = event.currentTarget; // 获取触发事件的按钮
+        if (btn) {
+            setTimeout(() => {
+                if (btn.parentNode) {
+                    btn.classList.remove('clicked');
                 }
+            }, 300);
+        }
 
-                this.selectedPost = post;
-                this.commentDialog = true;
-                this.newComment = '';
-                this.replyingTo = null;
-                this.replyParentId = null;
-            },
+        // 显示简单的提示消息
+        this.$nextTick(() => {
+            if (post.isLiked) {
+                this.$toast ? this.$toast.success('点赞成功') : console.log('点赞成功');
+            } else {
+                this.$toast ? this.$toast.info('取消点赞成功') : console.log('取消点赞成功');
+            }
+        });
+    } catch (error) {
+        console.error('点赞操作失败:', error);
+        // 如果请求失败，恢复状态
+        post.isLiked = !post.isLiked;
+        post.likes = post.isLiked ? post.likes + 1 : post.likes - 1;
+        post.likeCount = post.isLiked ? post.likeCount + 1 : post.likeCount - 1;
+    }
+},
+            async toggleFavorite(post, event) {
+            event.stopPropagation();
+            try {
+                if (post.isFavorite) {
+                    // 取消收藏
+                    await axios.delete(`/favorites/${post.id}`);
+                } else {
+                    // 添加收藏
+                    await axios.post(`/favorites/${post.id}`);
+                }
+                // 切换收藏状态
+                post.isFavorite = !post.isFavorite;
+                const config = {
+                headers: {
+                    // 在请求头中添加 token
+                    Authorization: `Bearer ${this.token}` 
+                }
+            };
+                // 获取更新后的收藏数
+                const response = await axios.get(`/favorites/count/${post.id}`,config);
+                const newLikeCount = response.data.data;
 
+                // 更新帖子的收藏数
+                post.likeCount = newLikeCount;
+            } catch (error) {
+                console.error('收藏操作失败:', error);
+            }
+        },
+           // 原有方法
+        openComments(post, event) {
+            event.stopPropagation();
+            this.selectedPost = post;
+            this.commentDialog = true;
+            this.fetchComments(post.id);
+        },
+        fetchComments(postId) {
+            const url = `/comments/post/${postId}`;
+            const likeStatusPromises = [];
+            const config = {
+                headers: {
+                    // 在请求头中添加 token
+                    Authorization: `Bearer ${this.token}` 
+                }
+            };
+            axios.get(url, config)
+               .then(response => {
+                
+                    this.comments = response.data.data;
+                    // 遍历评论列表，获取每个评论的点赞状态
+                    this.comments.forEach(comment => {
+                likeStatusPromises.push(this.getCommentLikeStatus(comment.id, comment));
+                if (comment.replies) {
+                    comment.replies.forEach(reply => {
+                        likeStatusPromises.push(this.getCommentLikeStatus(reply.id, reply));
+                    });
+                }
+            });
+
+            // 等待所有点赞状态请求完成
+            return Promise.all(likeStatusPromises);
+        }).then(() => {
+            // 所有点赞状态请求完成后，强制更新视图
+            this.$forceUpdate(); 
+        })
+      
+               .catch(error => {
+                    console.error('获取评论失败:', error);
+                });
+        },
+                toggleShowReplies(comment) {
+            if (!comment.showReplies) {
+                // 如果回复详情未显示，先获取回复数和回复详情
+                this.fetchCommentReplies(comment);
+            }
+            this.$set(comment,'showReplies',!comment.showReplies);
+            // 强制更新视图
+             this.$forceUpdate();
+            
+        },
+        async fetchCommentReplies(comment) {
+            try {
+                const response = await axios.get(`/comments/replies/${comment.id}`);
+                comment.replyCount = response.data.data.length;
+                comment.replies = response.data.data;
+            } catch (error) {
+                console.error('Error fetching comment replies:', error);
+            }
+        },
+        toggleCommentLike(){},
+        getCommentLikeStatus(commentId, comment) {
+            return new Promise((resolve, reject) => {
+        axios.get(`/comments/like/exists?targetId=${commentId}`)
+           .then(response => {
+                // 更新评论的点赞状态
+                Vue.set(comment, 'isLiked', response.data);
+                console.log(comment.isLiked);
+                // 当请求成功时，将 Promise 标记为已解决
+                resolve();
+            })
+           .catch(error => {
+                console.error('获取评论点赞状态失败:', error);
+                // 当请求失败时，将 Promise 标记为已拒绝
+                reject(error);
+            });
+    });
+        },
+        // 初始化评论和回复的显示状态
+    initCommentStates() {
+      this.comments.forEach(comment => {
+        comment.showReplies = false;
+        if (comment.replies) {
+          this.initSubCommentStates(comment.replies);
+        }
+      });
+    },
+    initSubCommentStates(replies) {
+      replies.forEach(reply => {
+        reply.showReplies = false;
+        if (reply.replies) {
+          this.initSubCommentStates(reply.replies);
+        }
+      });
+    },
             prepareReply(comment, parentId = null) {
                 this.replyingTo = comment;
                 this.replyParentId = parentId;
@@ -802,8 +1053,13 @@
                 this.replyParentId = null;
                 this.newComment = '';
             },
-
             addComment() {
+                const config = {
+                headers: {
+                    // 在请求头中添加 token
+                    Authorization: `Bearer ${this.token}` 
+                }
+            };
                 if (!this.newComment.trim()) return;
 
                 if (this.replyingTo) {
@@ -813,7 +1069,7 @@
                         parentId: this.replyParentId || this.replyingTo.id
                     };
 
-                    this.$axios.post(`/api/posts/${this.selectedPost.id}/comments/reply`, replyData)
+                    this.$axios.post(`/comments`,replyData, config)
                         .then(res => {
                             if (res.data.code === 200) {
                                 this.handleReplySuccess(res.data.data);
@@ -834,9 +1090,13 @@
                         });
                 } else {
                     // 原来的评论逻辑
-                    this.$axios.post(`/api/posts/${this.selectedPost.id}/comments`, {
-                        content: this.newComment
-                    })
+                    this.$axios.post(`/comments`, {
+                        content: this.newComment,
+                        postId: this.selectedPost.id,
+                        parentId: 0,
+                        
+
+                    }, config)
                         .then(res => {
                             if (res.data.code === 200) {
                                 // 添加到评论列表
@@ -923,57 +1183,53 @@
                 }
             },
 
-            openPostDetail(post) {
-                console.log('打开帖子详情:', post);
-                this.selectedPost = {
-                    ...post,
-                    authorAvatar: post.authorAvatar || 'https://cdn.vuetifyjs.com/images/john.jpg'
-                };
-                this.postDetailDialog = true;
-            },
+            
 
             handleImageError(e) {
                 e.target.src = 'https://cdn.vuetifyjs.com/images/john.jpg';
             },
 
-            toggleFollow(post, event) {
-                if (event) event.stopPropagation(); // 阻止事件冒泡
-
-                // 切换关注状态
+            async toggleFollow(post, event) {
+                
+                if(event)event.stopPropagation();
+            try {
+                const config = {
+                headers: {
+                    // 在请求头中添加 token
+                    Authorization: `Bearer ${this.token}` 
+                }
+            };
+                
+                if (post.isFollowing) {
+                    // 取消收藏
+                    await axios.delete(`/relations/follow/${post.userId}`,config);
+                } else {
+                    // 添加收藏
+                    await axios.post(`/relations/follow/${post.userId}`,config);
+                }
+                // 切换收藏状态
                 post.isFollowing = !post.isFollowing;
-
-                // 显示提示消息
-                this.$nextTick(() => {
-                    if (post.isFollowing) {
-                        this.$toast ? this.$toast.success(`已关注 ${post.authorName}`) : console.log(`已关注 ${post.authorName}`);
-                    } else {
-                        this.$toast ? this.$toast.info(`已取消关注 ${post.authorName}`) : console.log(`已取消关注 ${post.authorName}`);
-                    }
-                });
-
-                // 向后端发送关注/取消关注请求
-                this.$axios.post(`/api/users/follow`, {
-                    userId: post.authorId,
-                    follow: post.isFollowing
-                })
-                    .then(response => {
-                        if (response.data.code !== 200) {
-                            // 如果请求失败，恢复状态
-                            post.isFollowing = !post.isFollowing;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('关注操作失败:', error);
+                
+            } catch (error) {
+                console.error('关注操作失败:', error);
                         // 如果请求失败，恢复状态
                         post.isFollowing = !post.isFollowing;
-                    });
+            }
+            },
+            async fetchPopularTags() {
+                try {
+                    const response = await this.$axios.get('/posts/tags');
+                    if (response.data) {
+                        this.popularTags = response.data.map(tag => tag.name);
+                    }
+                } catch (error) {
+                    console.error('获取热门标签失败:', error);
+                }
             }
         },
 
         watch: {
-            selectedCategory() {
-                this.fetchPosts();
-            },
+            
 
             sortOption() {
                 this.fetchPosts();
@@ -983,11 +1239,27 @@
         created() {
             // 初始化时获取帖子列表
             this.fetchPosts();
+            this.fetchPopularTags();
+            this.initCommentStates();
         }
+        
     }
 </script>
 
 <style scoped>
+/* 可以根据需要调整滚动条样式 */
+.comments-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.comments-container::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.comments-container::-webkit-scrollbar-track {
+    background-color: rgba(0, 0, 0, 0.1);
+}
     .content-preview {
         max-height: 60px;
         overflow: hidden;
@@ -1183,4 +1455,5 @@
         min-width: 70px;
         text-transform: none;
     }
+    
 </style>

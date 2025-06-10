@@ -1,0 +1,11 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+# 忽略依赖、打包、测试产物、IDE 配置、日志等
+node_modules/
+dist/
+build/
+coverage/
+*.snap
+.vscode/
+.idea/
+*.log
+*.tmp

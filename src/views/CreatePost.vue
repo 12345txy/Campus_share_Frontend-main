@@ -157,15 +157,25 @@
                         return;
                     }
 
-                    // 创建预览URL
-                    const url = URL.createObjectURL(this.singleImage);
-                    this.imagePreviewUrls.push(url);
+                    const formData = new FormData();
+                    formData.append('file', this.singleImage);
 
-                    // 添加到图片数组
-                    this.images.push(this.singleImage);
+                    this.$axios.post('/posts/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                    }).then(res => {
+                    console.log("上传返回：", res);
+                    const imageUrl = res.data.data; // 获取上传后的 URL
 
-                    // 清空单张图片选择器，允许继续选择
+                    // 加入图片数组和预览
+                    this.images.push(imageUrl);
+                    this.imagePreviewUrls.push(imageUrl);
+
+                    // 清空单图上传框，允许继续选择
                     this.singleImage = null;
+                    }).catch(err => {
+                    alert('图片上传失败');
+                    console.error(err);
+                    });
                 }
             },
             savePost() {
@@ -177,35 +187,23 @@
 
                 // 处理图片上传
                 if (this.images.length) {
-                    // 模拟上传成功后获取URL
-                    this.post.images = [...this.imagePreviewUrls]; // 复制数组到post.images
-
-                    // 设置第一张图为封面图
-                    if (this.imagePreviewUrls.length > 0) {
-                        this.post.coverImage = this.imagePreviewUrls[0];
-                    }
+                    this.post.images = [...this.images]; // 直接用上传后的 URL 列表
+                    this.post.coverImage = this.images[0]; // 第一张作为封面
                 }
 
-                // 使用Vuex保存帖子数据
-                // this.$store.commit('setPost', this.post);
-
-                // 模拟API请求发送到后端
-                console.log('保存的帖子数据:', this.post);
-
-                // 实际项目中发送到后端的代码应该类似:
-                /*
-                this.$axios.post('/api/posts', this.post)
+                this.$axios.post('/posts', this.post)
                     .then(response => {
-                        if (response.data.code === 200) {
-                            this.success();
-                            this.resetForm();
-                        }
+                    if (response.data.code === 200) {
+                        alert("发布成功！");
+                        this.resetForm();
+                    } else {
+                        alert("发布失败：" + response.data.message);
+                    }
                     })
                     .catch(error => {
-                        console.error('发布帖子失败:', error);
-                        alert('发布失败，请重试');
+                    console.error("请求失败：", error);
+                    alert("系统错误，发布失败！");
                     });
-                */
 
                 // 成功提示
                 this.success();

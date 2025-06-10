@@ -41,6 +41,7 @@
           </v-card>
         </v-bottom-navigation>
       </v-navigation-drawer>
+
       <!-- 顶部导航栏 -->
       <v-app-bar elevation="5" app color="indigo" dark dense border="bottom">
         <div class="d-flex align-center">
@@ -49,48 +50,95 @@
         </div>
       </v-app-bar>
     </template>
+
     <v-main>
-      <router-view></router-view>
+      <router-view>
+      </router-view>
     </v-main>
+
+    <!-- ✅ 全局 Snackbar -->
+    <v-snackbar v-model="snackbar.show" :timeout="snackbar.timeout" :color="snackbar.color">
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-app>
 </template>
 
 <script>
-  export default {
-    name: 'App',
-    data() {
-      return {
-        drawer: false,
-        menuItems: [
-          // { title: '游学推荐', icon: 'mdi-map', iconColor: 'success', to: '/TravelRecommend' },
-          // { title: '路线规划', icon: 'mdi-navigation-variant', iconColor: 'purple', to: '/RoutePlan' },
-          // { title: '场所查询', icon: 'mdi-magnify', iconColor: 'blue', to: '/PlaceSearch' },
-          // { title: '游学日记', icon: 'mdi-book', iconColor: 'brown', to: '/DiaryManage' },
-          // { title: '美食推荐', icon: 'mdi-pasta', iconColor: 'deep-orange', to: '/FoodRecommend' },
-          { title: '首页', icon: 'mdi-vuejs', iconColor: 'green', to: '/FrontPage' },
-          { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/UserProfile' },
-          { title: '发布帖子', icon: 'mdi-pencil', iconColor: 'blue', to: '/CreatePost' },
-        
-        ],
-        currentItemTitle: '欢迎来到游学系统', // 默认标题
-      };
-    },
-    watch: {
+export default {
+  name: 'App',
+  data() {
+    return {
+      drawer: false,
+      menuItems: [
+        { title: '首页', icon: 'mdi-vuejs', iconColor: 'green', to: '/FrontPage' },
+        { title: '个人主页', icon: 'mdi-account-circle', iconColor: 'indigo', to: '/UserProfile' },
+        { title: '发布帖子', icon: 'mdi-pencil', iconColor: 'blue', to: '/CreatePost' },
+        { title: '兴趣社群', icon: 'mdi-account-group', iconColor: 'purple', to: '/communities' },
+      ],
+      currentItemTitle: '欢迎来到游学系统',
+      snackbar: {
+        show: false,
+        text: '',
+        color: 'success',
+        timeout: 3000
+      }
+    };
+  },
+  created() {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user && (user.isAdmin === '1' || user.isAdmin === 1)) {
+        this.menuItems.push({
+          title: '后台管理',
+          icon: 'mdi-shield-account',
+          iconColor: 'red',
+          to: '/admin'
+        });
+      }
+    } catch (e) {
+      console.error('解析用户信息失败:', e);
+    }
+    this.$root.$showSnackbar = this.showSnackbar;
+    console.log(this.$router.resolve('/admin'));
+  },
 
-      '$route': {
-        handler(to) {
-          // 获取当前路由路径对应的菜单项标题
+  methods: {
+    showSnackbar(text, color = 'success') {
+      this.snackbar.text = text;
+      this.snackbar.color = color;
+      this.snackbar.show = true;
+    }
+  },
+
+  computed: {
+    isAdmin() {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return false;
+      try {
+        const user = JSON.parse(userStr);
+        return user && (user.isAdmin === 1 || user.isAdmin === '1');
+      } catch (e) {
+        return false;
+      }
+    }
+  },
+
+  watch: {
+    $route: {
+      handler(to) {
+        // 获取当前路由路径对应的菜单项标题
           const currentItem = this.menuItems.find(item => item.to === to.path);
           // 如果找到对应的菜单项，设置标题，否则保持默认标题
           this.currentItemTitle = currentItem ? currentItem.title : '编辑日记';
         },
         immediate: true // 确保在路由变化时立即执行
-      }
-    },
-  };
-</script>
-<style>
-  .list-item-custom-height {
-    height: 50px;
+    }
   }
+};
+</script>
+
+<style>
+.list-item-custom-height {
+  height: 50px;
+}
 </style>

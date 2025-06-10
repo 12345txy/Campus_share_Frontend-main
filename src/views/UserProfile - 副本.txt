@@ -1,7 +1,7 @@
 <template>
     <v-app>
         <v-container class="pa-0 mt-0" fluid>
-            <!-- 顶部基本信息部分 -->
+            <!-- 郑丽顶部基本信息部分 -->
             <v-card flat class="profile-header">
                 <v-img src="https://cdn.vuetifyjs.com/images/backgrounds/vbanner.jpg" height="350"
                     gradient="to bottom, rgba(0,0,0,.1), rgba(0,0,0,.8)" class="profile-cover">
@@ -282,7 +282,7 @@
                                                 <v-spacer></v-spacer>
                                                 <div class="d-flex align-center">
                                                     <!-- 点赞按钮 -->
-                                                    <v-btn icon x-small color="green" class="mr-1 like-btn"
+                                                    <v-btn icon x-small color="blue" class="mr-1 like-btn"
                                                         @click.stop="toggleLike(post, $event)">
                                                         <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' :
                                                             'mdi-thumb-up-outline' }}</v-icon>
@@ -355,7 +355,7 @@
                                                 <v-spacer></v-spacer>
                                                 <div class="d-flex align-center">
                                                     <!-- 点赞按钮 -->
-                                                    <v-btn icon x-small color="indigo" class="mr-1 like-btn"
+                                                    <v-btn icon x-small color="blue" class="mr-1 like-btn"
                                                         @click.stop="toggleLike(post, $event)">
                                                         <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' :
                                                             'mdi-thumb-up-outline' }}</v-icon>
@@ -426,7 +426,7 @@
                                                 <v-spacer></v-spacer>
                                                 <div class="d-flex align-center">
                                                     <!-- 点赞按钮 -->
-                                                    <v-btn icon x-small color="indigo" class="mr-1 like-btn"
+                                                    <v-btn icon x-small color="blue" class="mr-1 like-btn"
                                                         @click.stop="toggleLike(post, $event)">
                                                         <v-icon small>{{ post.isLiked ? 'mdi-thumb-up' :
                                                             'mdi-thumb-up-outline' }}</v-icon>
@@ -541,6 +541,7 @@ import Vue from 'vue';
             showEditDialog: false,
             username: '',
             nickname: '',
+            userId: -1,
             gender: '',
             email: '',
             phone: '',
@@ -554,9 +555,9 @@ import Vue from 'vue';
                 bio: ''
             },
             genderOptions: [
-                { text: '男', value: 0 },
-                { text: '女', value: 1 },
-                { text: '保密', value: 2 }
+                { text: '男', value: 'male' },
+                { text: '女', value: 'female' },
+                { text: '保密', value: 'secret' }
             ],
             rules: {
                 required: v => !!v || '此字段为必填项',
@@ -602,21 +603,19 @@ import Vue from 'vue';
         favoritePostsPage: 1,
         likedPostsPage: 1,
         postsPerPage: 3 ,//每页3个
-        totalPages:0,
-        token: null,
-        currentUser: null
+        totalPages:0
         }),
 
         created() {
-            // 初始化token
-            this.getCurrentUser();
-            
             const userId = this.$route.params.userId;
-            if (userId) {
-                this.fetchUserProfile(userId);
-            } else {
-                this.fetchUserProfile();
-            }
+    if (userId) {
+      this.fetchUserProfile(userId);
+    } else {
+      this.fetchUserProfile();
+    }
+            
+            
+           
         },
 
         methods: {
@@ -913,62 +912,43 @@ import Vue from 'vue';
                 return text ? text.replace(/<[^>]+>/g, '') : '暂无内容';
             },
            async fetchUserProfile(userId = null) {
-      const token = localStorage.getItem('token');
-      let url = '/user/current';
-      if (userId) {
-        url = `/user/current/${userId}`;
-      }
-      else{
-        url = `/user/current/-1`;
-      }
-      try {
-        const res = await this.$axios.get(url, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        if (res.data.code === 200) {
-          const data = res.data.data;
-          if (data) {
-            const user = data.user;
-            this.username = user.username;
-            this.nickname = user.nickname;
-            
-            // 处理性别值：确保前端使用数字值
-            if (typeof user.gender === 'string') {
-                // 如果后端返回字符串，转换为数字
-                if (user.gender === 'male') {
-                    this.gender = 0;
-                } else if (user.gender === 'female') {
-                    this.gender = 1;
-                } else {
-                    this.gender = 2; // 保密
-                }
-            } else {
-                // 如果后端已经返回数字，直接使用
-                this.gender = user.gender;
+            const token = localStorage.getItem('token');
+            let url = '/user/current';
+            if (userId) {
+                url = `/user/current/${userId}`;
             }
-            
-            this.email = user.email;
-            this.phone = user.phone;
-            this.bio = user.bio;
-            this.avatar = user.avatar;
-            this.isCurrentUser = data.isCurrentUser;
-            
-            console.log('获取到的用户性别值:', this.gender);
-            
-            this.fetchUserPosts();
-            this.fetchUserFavorites();
-            this.fetchUserLikedPosts();
-            this.fetchFollowingList();
-            this.fetchFollowerList();
-            this.checkFollowStatus();
-          }
-        }
-      } catch (error) {
-        console.error('获取用户信息失败:', error);
-      }
-    },
+            try {
+                const res = await this.$axios.get(url, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+                });
+                if (res.data.code === 200) {
+                const data = res.data.data;
+                if (data) {
+                    const user = data.user;
+                    this.userId = user.id;
+                    this.username = user.username;
+                    this.nickname = user.nickname;
+                    this.gender = user.gender;
+                    this.email = user.email;
+                    this.phone = user.phone;
+                    this.bio = user.bio;
+                    this.avatar = user.avatar;
+                    this.isCurrentUser = data.isCurrentUser;
+                    
+                    this.fetchUserPosts();
+                    this.fetchUserFavorites();
+                    this.fetchUserLikedPosts();
+                    this.fetchFollowingList();
+                    this.fetchFollowerList();
+                    this.checkFollowStatus();
+                }
+                }
+            } catch (error) {
+                console.error('获取用户信息失败:', error);
+            }
+            },
             fetchUserStats() {
                 // 修改获取用户统计数据
                 this.$axios.get('/user/stats')
@@ -992,7 +972,7 @@ import Vue from 'vue';
             fetchUserPosts() {
                 const token = localStorage.getItem('token');
                 // 模拟获取用户帖子
-                this.$axios.get('/posts/user/-1',{params : {
+                this.$axios.get('/posts/user/${this.userId}',{params : {
                     sortOption:0,
                 userName:this.nickname,
                 current: this.myPostsPage,
@@ -1067,7 +1047,7 @@ import Vue from 'vue';
             fetchUserFavorites() {
                 const token = localStorage.getItem('token');
                 // 模拟获取用户帖子
-                this.$axios.get('/posts/user/Favorites/-1',{params : {
+                this.$axios.get('/posts/user/Favorites/${this.userId}',{params : {
                     
                 userName:this.nickname,
                 page: this.favoritePostsPage,
@@ -1142,7 +1122,7 @@ import Vue from 'vue';
             fetchUserLikedPosts() {
                 const token = localStorage.getItem('token');
                 // 模拟获取用户帖子
-                this.$axios.get('/posts/user/Likes/-1',{params : {
+                this.$axios.get('/posts/user/Likes/${this.userId}',{params : {
                 
                 userName:this.nickname,
                 page: this.likedPostsPage,
@@ -1280,83 +1260,42 @@ import Vue from 'vue';
             },
 
             async saveProfile() {
-                this.loading = true;
-                
-                // 转换性别值：string -> number
-                let genderValue;
-                if (this.gender === 'male') {
-                    genderValue = 0;
-                } else if (this.gender === 'female') {
-                    genderValue = 1;
-                } else if (this.gender === 'secret') {
-                    genderValue = 2;
-                } else {
-                    // 如果已经是数字，直接使用
-                    genderValue = typeof this.gender === 'number' ? this.gender : 2; // 默认为保密
-                }
-                
+                this.loading = true
+
+                // 使用JSON格式
                 const userData = {
                     nickname: this.nickname,
-                    gender: genderValue,  // 使用转换后的数字值
+                    gender: this.gender,
                     email: this.email,
                     phone: this.phone,
                     bio: this.bio
-                };
-                
-                console.log('准备发送的用户数据:', userData);
-                console.log('转换后的性别值:', genderValue);
+                }
 
                 try {
-                    // 依赖拦截器，不手动设置headers
-                    const res = await this.$axios.put('/user/profile', userData);
-
-                    console.log('保存用户资料响应:', res.data);
+                    const res = await this.$axios.put('/user/profile', userData, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
 
                     if (res.data.code === 200) {
-                        if (this.$store && this.$store.commit) {
-                            this.$store.commit('setUserInfo', res.data.data);
-                        }
-                        
-                        try {
-                            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-                            const updatedUser = { ...currentUser, ...userData };
-                            localStorage.setItem('user', JSON.stringify(updatedUser));
-                        } catch (e) {
-                            console.error('更新localStorage失败:', e);
-                        }
-                        
-                        this.editing = false;
-                        window.alert('保存成功');
+                        this.$store.commit('setUserInfo', res.data.data)
+                        this.editing = false
+                        window.alert('保存成功')
                     } else {
-                        console.error('保存失败，后端返回:', res.data);
-                        window.alert(res.data.message || '保存失败');
+                        window.alert(res.data.message || '保存失败')
                     }
                 } catch (error) {
-                    console.error('更新用户信息失败:', error);
-                    console.error('错误响应:', error.response?.data);
-                    console.error('错误状态码:', error.response?.status);
-                    
-                    let errorMessage = '保存失败，请重试';
-                    if (error.response?.status === 401) {
-                        errorMessage = '登录已过期，请重新登录';
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                        this.$router.push('/LoginRegister');
-                    } else if (error.response?.status === 403) {
-                        errorMessage = '没有权限执行此操作';
-                    } else if (error.response?.status === 400) {
-                        errorMessage = '提交的数据格式错误';
-                    }
-                    
-                    window.alert(errorMessage);
+                    console.error('更新用户信息失败:', error)
+                    window.alert('保存失败，请重试')
                 } finally {
-                    this.loading = false;
+                    this.loading = false
                 }
             },
 
             getGenderText(value) {
-                const option = this.genderOptions.find(opt => opt.value === value);
-                return option ? option.text : '保密';
+                const option = this.genderOptions.find(opt => opt.value === value)
+                return option ? option.text : '保密'
             },
 
            checkFollowStatus() {
@@ -1529,35 +1468,8 @@ async fetchFollowerList() {
     } catch (error) {
         console.error('获取粉丝列表失败:', error);
     }
-},
-
-// 添加获取当前用户信息的方法
-getCurrentUser() {
-    try {
-        const userStr = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
+}
         
-        console.log('获取到的token:', token);
-        
-        if (token) {
-            this.token = token;
-        } else {
-            console.error('Token不存在，用户可能未登录');
-            this.$router.push('/LoginRegister');
-            return;
-        }
-        
-        if (userStr && userStr !== 'undefined') {
-            this.currentUser = JSON.parse(userStr);
-        } else {
-            console.error('用户信息不存在');
-            this.$router.push('/LoginRegister');
-        }
-    } catch (e) {
-        console.error('获取用户信息失败:', e);
-        this.$router.push('/LoginRegister');
-    }
-},
 
         }
     }
