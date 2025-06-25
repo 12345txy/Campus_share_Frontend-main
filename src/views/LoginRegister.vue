@@ -37,10 +37,20 @@
                                 <v-text-field label="Username" v-model="username1"
                                     append-icon="mdi-account-box-edit-outline" clearable>
                                 </v-text-field>
-                                <v-text-field class="mb-6" label="Password" :type="showPassword ? 'text' : 'password'"
+                                <v-text-field class="mb-4" label="Password" :type="showPassword ? 'text' : 'password'"
                                     v-model="passwd1" :append-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
                                     @click:append="showPassword = !showPassword" clearable>
                                 </v-text-field>
+                                <v-select 
+                                    label="Interest (Optional)" 
+                                    :items="interestItems" 
+                                    v-model="selectedInterest" 
+                                    append-icon="mdi-heart" 
+                                    clearable
+                                    class="mb-4"
+                                    hint="选择您感兴趣的内容分类"
+                                    persistent-hint>
+                                </v-select>
                                 <v-btn class="white--text font-weight-bold" :loading="loading" :disabled="loading"
                                     color="blue accent-2" outlined rounded @click="login();loader = 'loading'">
                                     Log in
@@ -82,6 +92,7 @@
             //登录
             username1: '',
             passwd1: '',
+            selectedInterest: '', // 登录时选择的兴趣
             //注册
             username2: '',
             passwd2: '',
@@ -90,6 +101,18 @@
             loading: false,
             loader: null,
             showPassword: false,
+            // 兴趣选项列表，基于图片中导航栏的分类
+            interestItems: [
+                '旅游',
+                '美食', 
+                '学习',
+                '校园',
+                '生活',
+                '情感',
+                '科技',
+                '娱乐',
+                '体育'
+            ],
             // interestName:'',
             // interests:[], 
             // items: [{text:'历史遗迹',value:1},{text:'自然景观',value:2},{text:'公园',value:3},{text:'博物馆/科技馆',value:4},{text:'游乐园',value:5},{text:'动物园/植物园',value:6},{text:'学校',value:7}],
@@ -116,13 +139,22 @@
 
             login: function () {
                 const self = this;
+                
+                // 构建请求数据，兴趣是可选的
+                const requestData = {
+                    username: this.username1,
+                    password: this.passwd1,
+                };
+                
+                // 如果用户选择了兴趣，则添加到请求数据中
+                if (this.selectedInterest) {
+                    requestData.interest = this.selectedInterest;
+                }
+                
                 this.$axios({
                     method: 'post',
                     url: '/auth/login',
-                    data: {
-                        username: this.username1,
-                        password: this.passwd1,
-                    },
+                    data: requestData,
                     headers: {
                         'Content-Type': 'application/json',
                     }
@@ -139,12 +171,30 @@
                         console.log('保存的用户信息:', userData);
                         localStorage.setItem('user', JSON.stringify(userData));
                         localStorage.setItem('token', res.data.data.token);
+                        
+                        // 保存用户选择的兴趣到localStorage，以便FrontPage使用
+                        if (this.selectedInterest) {
+                            localStorage.setItem('userInterest', this.selectedInterest);
+                        }
 
                         // 路由跳转
                         const isAdmin = res.data.data.isAdmin === '1';
-                        const targetPath = isAdmin ? '/admin' : '/FrontPage';
-                        if (this.$route.path !== targetPath) {
-                            this.$router.push(targetPath).catch(() => {});
+                        
+                        if (isAdmin) {
+                            // 管理员直接跳转到管理页面
+                            this.$router.push('/admin').catch(() => {});
+                        } else {
+                            // 普通用户跳转到首页
+                            if (this.selectedInterest) {
+                                // 如果用户选择了兴趣，带参数跳转到对应分类
+                                this.$router.push({
+                                    path: '/FrontPage',
+                                    query: { category: this.selectedInterest }
+                                }).catch(() => {});
+                            } else {
+                                // 没有选择兴趣，正常跳转
+                                this.$router.push('/FrontPage').catch(() => {});
+                            }
                         }
                     } else {
                         window.alert('账号或密码错误，请重试!如未注册，请先注册！')

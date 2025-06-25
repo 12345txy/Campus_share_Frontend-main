@@ -2,9 +2,9 @@
     <v-app>
         <v-container>
             <!-- 种类选择（Category）筛选 -->
-            <v-tabs v-model="selectedCategory" background-color="transparent" color="indigo"
+            <v-tabs v-model="selectedCategoryIndex" background-color="transparent" color="indigo"
                 slider-color="indigo accent-4" centered show-arrows>
-                <v-tab v-for="category in categories" :key="category" :value="category"
+                <v-tab v-for="category in categories" :key="category"
                     class="font-weight-bold text-body-1" @click="fetchPosts(category)">
                     {{ category }}
                 </v-tab>
@@ -401,6 +401,7 @@ import Vue from 'vue';
 
             // 分类相关
             selectedCategory: '全部',
+            selectedCategoryIndex: 0, // 新增：用于v-tabs绑定的索引
             categories: ['全部', '旅游', '美食', '学习', '校园', '生活', '情感', '科技', '娱乐', '体育'],
 
             // 标签相关
@@ -1201,11 +1202,13 @@ import Vue from 'vue';
             };
                 
                 if (post.isFollowing) {
-                    // 取消收藏
+                    // 取关
                     await axios.delete(`/relations/follow/${post.userId}`,config);
+                    console.log('取关成功');
                 } else {
-                    // 添加收藏
+                    // 关注
                     await axios.post(`/relations/follow/${post.userId}`,config);
+                    console.log('关注成功');
                 }
                 // 切换收藏状态
                 post.isFollowing = !post.isFollowing;
@@ -1229,16 +1232,52 @@ import Vue from 'vue';
         },
 
         watch: {
-            
-
+            // 监听路由变化
+            '$route'(to) {
+                const categoryFromRoute = to.query.category;
+                if (categoryFromRoute && this.categories.includes(categoryFromRoute)) {
+                    this.selectedCategory = categoryFromRoute;
+                    this.selectedCategoryIndex = this.categories.indexOf(categoryFromRoute);
+                    this.fetchPosts(categoryFromRoute);
+                }
+            },
+            // 监听tab索引变化
+            selectedCategoryIndex(newIndex) {
+                this.selectedCategory = this.categories[newIndex];
+            },
             sortOption() {
                 this.fetchPosts();
             }
         },
 
         created() {
-            // 初始化时获取帖子列表
-            this.fetchPosts();
+            // 检查路由参数中是否有指定的分类
+            const categoryFromRoute = this.$route.query.category;
+            // 检查localStorage中是否有用户选择的兴趣
+            const userInterest = localStorage.getItem('userInterest');
+            
+            // 优先使用路由参数，其次使用localStorage中的兴趣
+            const targetCategory = categoryFromRoute || userInterest;
+            
+            // 如果有指定的分类且该分类存在于分类列表中，则设置为当前选中的分类
+            if (targetCategory && this.categories.includes(targetCategory)) {
+                this.selectedCategory = targetCategory;
+                this.selectedCategoryIndex = this.categories.indexOf(targetCategory); // 同时设置索引
+                console.log('设置用户选择的分类:', targetCategory, '索引:', this.selectedCategoryIndex);
+                // 立即获取该分类的帖子
+                this.fetchPosts(targetCategory);
+            } else {
+                // 如果没有指定分类，则使用默认的"全部"分类
+                this.selectedCategoryIndex = 0; // 设置默认索引
+                this.fetchPosts(this.selectedCategory);
+            }
+            
+            // 清除localStorage中的兴趣信息（一次性使用）
+            if (userInterest) {
+                localStorage.removeItem('userInterest');
+            }
+            
+            // 获取热门标签和初始化评论状态
             this.fetchPopularTags();
             this.initCommentStates();
         }
